@@ -31,7 +31,7 @@ func TestRender(t *testing.T) {
 				Currency:         "USD",
 				TotalMonthlyCost: rat.Zero,
 			},
-			goldenFile: "minimal_empty.txt",
+			goldenFile: "minimal_empty.md",
 		},
 		{
 			name:           "cost_increase",
@@ -115,7 +115,7 @@ func TestRender(t *testing.T) {
 					},
 				},
 			},
-			goldenFile: "cost_increase.txt",
+			goldenFile: "cost_increase.md",
 		},
 		{
 			name:           "project_errors",
@@ -140,7 +140,7 @@ func TestRender(t *testing.T) {
 					},
 				},
 			},
-			goldenFile: "project_errors.txt",
+			goldenFile: "project_errors.md",
 		},
 		{
 			name:           "governance_finops",
@@ -173,7 +173,7 @@ func TestRender(t *testing.T) {
 					},
 				},
 			},
-			goldenFile: "governance_finops.txt",
+			goldenFile: "governance_finops.md",
 		},
 		{
 			name:           "fixed_issues",
@@ -202,7 +202,7 @@ func TestRender(t *testing.T) {
 					},
 				},
 			},
-			goldenFile: "fixed_issues.txt",
+			goldenFile: "fixed_issues.md",
 		},
 		{
 			name:           "preexisting_issues",
@@ -239,7 +239,7 @@ func TestRender(t *testing.T) {
 					},
 				},
 			},
-			goldenFile: "preexisting_issues.txt",
+			goldenFile: "preexisting_issues.md",
 		},
 		{
 			name:           "guardrail_blocks",
@@ -294,7 +294,7 @@ func TestRender(t *testing.T) {
 					},
 				},
 			},
-			goldenFile: "guardrail_blocks.txt",
+			goldenFile: "guardrail_blocks.md",
 		},
 		{
 			name:           "environmental_metrics",
@@ -360,7 +360,7 @@ func TestRender(t *testing.T) {
 					},
 				},
 			},
-			goldenFile: "environmental_metrics.txt",
+			goldenFile: "environmental_metrics.md",
 		},
 		{
 			name:           "governance_tagging",
@@ -399,7 +399,7 @@ func TestRender(t *testing.T) {
 					},
 				},
 			},
-			goldenFile: "governance_tagging.txt",
+			goldenFile: "governance_tagging.md",
 		},
 		{
 			name:           "rich_cost_details",
@@ -537,7 +537,7 @@ func TestRender(t *testing.T) {
 					},
 				},
 			},
-			goldenFile: "rich_cost_details.txt",
+			goldenFile: "rich_cost_details.md",
 		},
 		{
 			name:           "truncated_cost_details",
@@ -618,7 +618,7 @@ func TestRender(t *testing.T) {
 					},
 				},
 			},
-			goldenFile: "truncated_cost_details.txt",
+			goldenFile: "truncated_cost_details.md",
 		},
 	}
 
