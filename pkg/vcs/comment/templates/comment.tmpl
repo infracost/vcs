@@ -1,0 +1,46 @@
+<h3>💰 Infracost report</h3>
+
+{{- if gt (len .ProjectErrors) 0 }}
+{{- template "errors" . }}
+{{- end }}
+
+
+{{- if .GovernanceSentence }}
+{{ .GovernanceSentence }}
+{{- end }}
+{{- if gt (len .GovernanceTables) 0 }}
+{{- template "governance" . }}
+{{- end }}
+
+{{- if .FixedIssuesSentence }}
+
+{{- template "fixedIssues" . }}
+{{- end }}
+{{- if .DisplayCosts }}
+<details {{ if .ExpandCosts }}open{{ end }}>
+  <summary><b>{{ .CostChangeSentence }}</b> {{ .CarbonWaterSummary }}</summary>
+  <br/>
+{{- template "projectCosts" . }}
+  <details>
+  <summary>Estimate details {{ .CostDetailsMsg }}</summary>
+
+```
+{{ .CostDetails }}
+```
+  </details>
+
+{{/* TODO: Costs by tag is experimental and not yet included. See costs_by_tag.tmpl. */}}
+</details>
+
+<hr/>
+{{- end }}
+
+{{- if .PreexistingIssuesSentence }}
+
+{{ .PreexistingIssuesSentence }}
+{{- end }}
+
+<sub>
+  This comment will be updated when code changes.
+</sub>
+

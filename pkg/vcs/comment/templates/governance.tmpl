@@ -1,0 +1,61 @@
+{{- define "governanceEntry" }}
+<tr><td colspan="2" title="{{ if .Blocking }}Blocking failure{{ else }}Failure{{ end }}">
+  {{ if .Details -}}
+  <details {{ if .ExpandDetails }}open{{ end }}>
+    <summary>
+  {{- end }}
+    <b>{{ if .Blocking }}❌{{ else }}🔴{{ end }} {{ .Title }}</b>
+  {{ if .Details -}}
+    </summary><br/>
+
+{{ .Details }}
+  </details>
+  {{- end }}
+</td></tr>
+{{ if .Message -}}
+<tr><td></td><td>
+
+{{ .Message }}
+</td></tr>
+{{ end -}}
+{{ range .Resources -}}
+<tr><td></td><td>
+
+{{ if .Location }}{{ .Location }}{{ end }}
+  {{ range .ProjectIssues -}}
+    {{ range .Issues -}}
+* {{ . }}
+    {{ end -}}
+    {{ if .ProjectNamesLabel -}}
+
+in {{ .ProjectNamesLabel }}
+    {{ end -}}
+
+  {{ end -}}
+</td></tr>
+{{ end -}}
+{{ if gt .TruncatedIssues 0 -}}
+<tr><td></td><td>
+  ... and {{ .TruncatedIssues }} more.
+</td></tr>
+{{ end -}}
+{{- end }}
+
+{{- define "governanceTable" }}
+
+<table>
+  <tr><td colspan="2" width="1000px">{{ .Title }}</td></tr>
+  {{ range .Entries -}}
+{{- template "governanceEntry" . }}
+  {{ end -}}
+  {{ if .Truncated -}}
+  <tr><td colspan="2">... view <a href="{{ .CloudURL }}">all issues</a> in Infracost Cloud</td></tr>
+  {{ end -}}
+</table>
+{{- end }}
+
+{{- define "governance" }}
+{{- range .GovernanceTables }}
+{{- template "governanceTable" . }}
+{{- end }}
+{{- end }}

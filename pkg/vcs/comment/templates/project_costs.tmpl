@@ -1,0 +1,46 @@
+{{- define "projectCosts" }}
+{{- if gt (len .CostTableEntries) 0 }}
+
+<table>
+  <thead>
+    <td>Changed project</td>
+    {{- if .ShowModulePath }}
+    <td>Module path</td>
+    {{- end }}
+    {{- if .ShowWorkspace }}
+    <td>Workspace</td>
+    {{- end }}
+    <td><span title="Baseline costs are consistent charges for provisioned resources, like the hourly cost for a virtual machine, which stays constant no matter how much it is used. Infracost estimates these resources assuming they are used for the whole month (730 hours).">Baseline cost</span></td>
+    <td><span title="Usage costs are charges based on actual usage, like the storage cost for an object storage bucket. Infracost estimates these resources using the monthly usage values in the usage-file.">Usage cost</span>*</td>
+    <td>Total change</td>
+    <td>New monthly cost</td>
+  </thead>
+  <tbody>
+  {{- range .CostTableEntries }}
+    <tr>
+      <td>{{ .ProjectName }}</td>
+      {{- if $.ShowModulePath }}
+      <td>{{ .ModulePath }}</td>
+      {{- end }}
+      {{- if $.ShowWorkspace }}
+      <td>{{ .Workspace }}</td>
+      {{- end }}
+      <td align="right">{{ .BaselineCostChange }}</td>
+      <td align="right">{{ .UsageCostChange }}</td>
+      <td align="right">{{ .TotalCostChange }}</td>
+      <td align="right">{{ .NewTotalCost }}</td>
+    </tr>
+  {{- end }}
+  </tbody>
+</table>
+{{- if .UsageCostsMsg }}
+
+
+{{ .UsageCostsMsg }}
+{{- end }}
+{{- if .EnableEnvironmentalMetricComment }}
+
+**The methodology for calculating the CO₂e impact of your changes is explained [in our docs](https://www.infracost.io/docs/infracost_cloud/infracarbon).
+{{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,13 @@
+{{- define "errors" }}
+<h4>⚠️ New Project Errors</h4>
+
+{{ .ProjectErrorCount }} introduced in this PR and could not be evaluated.
+
+<ul>
+{{- range .ProjectErrors }}
+<li><b>{{ .Name }}</b></li>
+<pre>{{ .Error }}</pre>
+{{- end }}
+</ul>
+<hr/>
+{{- end }}
