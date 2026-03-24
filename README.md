@@ -10,27 +10,74 @@ Go library for posting Infracost cost estimate comments to pull requests. Suppor
 gh, err := github.New(ctx, "my-org", "my-repo", token, prNumber, github.Options{})
 ```
 
-For GitHub Enterprise, set `Options.APIURL` to your instance URL.
+For GitHub Enterprise, set `Options.APIURL` to your instance URL. You can also provide a custom `Options.TLSConfig` for Enterprise TLS requirements.
 
 ### 2. Build the comment data
 
-Populate a `vcs.CommentData` struct with cost and policy data from your run. All fields use shared proto types from `github.com/infracost/proto`.
+Populate a `comment.Data` struct with cost and policy data from your run. Cost fields use `*rat.Rat` from `github.com/infracost/go-proto/pkg/rat`, and policy fields use proto types from `github.com/infracost/proto` and `github.com/infracost/go-proto`.
 
 ```go
-data := vcs.CommentData{
+data := comment.Data{
     Currency:             "USD",
     TotalMonthlyCost:     totalCost,
     PastTotalMonthlyCost: pastCost,
-    Projects: []vcs.ProjectResult{
+    Projects: []comment.ProjectResult{
         {
             Name:             "my-project",
             TotalMonthlyCost: projectCost,
-            Resources:        output.GetResources(),
-            DiffResources:    diffResources,
+            Breakdown:        breakdown,
+            Resources:        resources,
         },
     },
 }
 ```
+
+#### `comment.Data` fields
+
+| Field | Type | Description |
+|---|---|---|
+| `EnableEnvironmentalMetrics` | `bool` | Show carbon emissions in the comment. |
+| `NeverShowCostEstimate` | `bool` | Suppress the cost details section entirely. |
+| `UsedUsageFile` | `bool` | Whether an `infracost-usage.yml` was used. |
+| `UsageAPIEnabled` | `bool` | Whether Infracost Cloud usage API estimates are enabled. |
+| `OrgSlug` | `string` | Organization slug for Infracost Cloud links. |
+| `RepoID` | `string` | Repository ID for Infracost Cloud links. |
+| `BaseBranchName` | `string` | Default/base branch name (e.g. `"main"`). |
+| `Currency` | `string` | ISO 4217 currency code (e.g. `"USD"`). |
+| `TotalMonthlyCost` | `*rat.Rat` | Current total monthly cost across all projects. |
+| `PastTotalMonthlyCost` | `*rat.Rat` | Previous total monthly cost (from base branch). Nil if no previous run. |
+| `DiffTotalMonthlyCarbonGramsCo2e` | `*rat.Rat` | Change in monthly carbon emissions (grams CO2e). |
+| `CloudURL` | `string` | Link to the Infracost Cloud dashboard for this run. |
+| `RepoURL` | `string` | VCS repository URL, used for source links in governance tables. |
+| `CommitSHA` | `string` | Head commit SHA, used with `RepoURL` for source links. |
+| `Summary` | `ResourceSummary` | Aggregated resource counts across all projects. |
+| `Projects` | `[]ProjectResult` | Per-project cost and resource data. |
+| `FinOpsPolicyResults` | `[]*provider.FinopsPolicyResult` | FinOps policy results for the current run. |
+| `PreviousFinOpsPolicyResults` | `[]*provider.FinopsPolicyResult` | FinOps policy results from the previous run. |
+| `SecurityPolicyResults` | `[]*provider.FinopsPolicyResult` | Security policy results for the current run. |
+| `PreviousSecurityPolicyResults` | `[]*provider.FinopsPolicyResult` | Security policy results from the previous run. |
+| `TaggingPolicyResults` | `[]*event.TaggingPolicyResult` | Tagging policy results for the current run. |
+| `PreviousTaggingPolicyResults` | `[]*event.TaggingPolicyResult` | Tagging policy results from the previous run. |
+| `GuardrailResults` | `[]*event.GuardrailResult` | Guardrail results for the current run. |
+| `PreviousGuardrailResults` | `[]*event.GuardrailResult` | Guardrail results from the previous run. |
+
+#### `comment.ProjectResult` fields
+
+| Field | Type | Description |
+|---|---|---|
+| `Name` | `string` | Project name from configuration. |
+| `ModulePath` | `string` | Terraform module path, if applicable. |
+| `Workspace` | `string` | Terraform workspace name, if applicable. |
+| `TotalMonthlyCost` | `*rat.Rat` | Current total monthly cost for this project. |
+| `PastTotalMonthlyCost` | `*rat.Rat` | Previous total monthly cost for this project. |
+| `TotalMonthlyUsageCost` | `*rat.Rat` | Current usage-based monthly cost. |
+| `PastTotalMonthlyUsageCost` | `*rat.Rat` | Previous usage-based monthly cost. |
+| `Breakdown` | `*CostBreakdown` | Current resource-level cost breakdown. |
+| `PastBreakdown` | `*CostBreakdown` | Previous resource-level cost breakdown. |
+| `DiffBreakdown` | `*CostBreakdown` | Resources that changed between runs. |
+| `Resources` | `[]*provider.Resource` | Resources with costs; each has an `Action` (CREATE, MODIFY, DELETE, NOOP). |
+| `Diagnostics` | `[]*parser.Diagnostic` | Parsing errors or warnings for this project. |
+| `PastDiagnostics` | `[]*parser.Diagnostic` | Parsing errors or warnings before the current changes. |
 
 ### 3. Generate and post the comment
 
@@ -38,6 +85,8 @@ data := vcs.CommentData{
 body, err := gh.GenerateComment(data)
 result, err := gh.PostComment(ctx, body, vcs.BehaviorUpdate)
 ```
+
+`PostResult.Posted` indicates whether a comment was created or updated. If it was skipped (e.g. duplicate or stale), `PostResult.SkipReason` explains why.
 
 ## Comment behaviors
 
@@ -62,7 +111,9 @@ gh, err := github.New(ctx, owner, repo, token, pr, github.Options{
 })
 ```
 
-The template receives a `vcs.CommentData` struct and has access to the template functions defined in `template_funcs.go`.
+The template receives a `comment.Data` struct and has access to the template functions defined in `template_funcs.go`.
+
+You can also set `Options.Tag` to use a custom comment identifier (defaults to `"infracost-comment"`).
 
 ## Interface
 
@@ -70,7 +121,7 @@ Any VCS provider implements:
 
 ```go
 type VCS interface {
-    GenerateComment(CommentData) (string, error)
+    GenerateComment(comment.Data) (string, error)
     PostComment(ctx context.Context, body string, behavior Behavior) (PostResult, error)
 }
 ```
