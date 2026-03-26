@@ -1,9 +1,9 @@
 package comment
 
 import (
+	"github.com/infracost/go-proto/pkg/diagnostic"
 	"github.com/infracost/go-proto/pkg/event"
 	"github.com/infracost/go-proto/pkg/rat"
-	"github.com/infracost/proto/gen/go/infracost/parser"
 	"github.com/infracost/proto/gen/go/infracost/provider"
 )
 
@@ -173,8 +173,8 @@ type ProjectResult struct {
 	Resources []*provider.Resource
 
 	// Diagnostics contains any parsing errors or warnings for this project.
-	Diagnostics []*parser.Diagnostic
+	Diagnostics []*diagnostic.Diagnostic
 
 	// PastDiagnostics contains any parsing errors or warnings for this project before the current changes.
-	PastDiagnostics []*parser.Diagnostic
+	PastDiagnostics []*diagnostic.Diagnostic
 }

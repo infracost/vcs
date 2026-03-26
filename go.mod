@@ -4,7 +4,8 @@ go 1.25.5
 
 require (
 	github.com/google/go-cmp v0.7.0
-	github.com/infracost/proto v1.27.0
+	github.com/infracost/go-proto v0.10.1-0.20260326130149-0544670ac46f
+	github.com/infracost/proto v1.28.0
 	github.com/shurcooL/githubv4 v0.0.0-20260209031235-2402fdf4a9ed
 	golang.org/x/oauth2 v0.36.0
 )
@@ -23,7 +24,6 @@ require (
 )
 
 require (
-	github.com/infracost/go-proto v0.8.0
 	golang.org/x/net v0.48.0 // indirect
 	golang.org/x/sys v0.39.0 // indirect
 	golang.org/x/text v0.32.0 // indirect
