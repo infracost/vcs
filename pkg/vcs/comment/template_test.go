@@ -7,9 +7,10 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/infracost/go-proto/pkg/diagnostic"
 	"github.com/infracost/go-proto/pkg/event"
 	"github.com/infracost/go-proto/pkg/rat"
-	"github.com/infracost/proto/gen/go/infracost/parser"
+	parserpb "github.com/infracost/proto/gen/go/infracost/parser"
 	"github.com/infracost/proto/gen/go/infracost/provider"
 )
 
@@ -17,11 +18,11 @@ var update = flag.Bool("update", false, "update golden files")
 
 func TestRender(t *testing.T) {
 	tests := []struct {
-		name            string
-		isGithub        bool
-		maxCommentSize  int
-		data            Data
-		goldenFile      string
+		name           string
+		isGithub       bool
+		maxCommentSize int
+		data           Data
+		goldenFile     string
 	}{
 		{
 			name:           "minimal_empty",
@@ -47,15 +48,15 @@ func TestRender(t *testing.T) {
 				},
 				Projects: []ProjectResult{
 					{
-						Name:                  "my-project",
-						TotalMonthlyCost:      rat.New(250),
-						PastTotalMonthlyCost:  rat.New(200),
-						TotalMonthlyUsageCost: rat.New(10),
+						Name:                      "my-project",
+						TotalMonthlyCost:          rat.New(250),
+						PastTotalMonthlyCost:      rat.New(200),
+						TotalMonthlyUsageCost:     rat.New(10),
 						PastTotalMonthlyUsageCost: rat.New(5),
 						Resources: []*provider.Resource{
 							{
-								Name:   "aws_instance.web",
-								Action: provider.ResourceAction_CREATE,
+								Name:        "aws_instance.web",
+								Action:      provider.ResourceAction_CREATE,
 								IsSupported: true,
 							},
 						},
@@ -127,15 +128,15 @@ func TestRender(t *testing.T) {
 				Projects: []ProjectResult{
 					{
 						Name: "broken-project",
-						Diagnostics: []*parser.Diagnostic{
-							{Critical: true, Error: "Failed to parse: invalid HCL"},
+						Diagnostics: []*diagnostic.Diagnostic{
+							{Critical: true, Type: parserpb.DiagnosticType_DIAGNOSTIC_TYPE_HCL_PARSE_ERROR, Error: "Failed to parse: invalid HCL"},
 						},
 					},
 					{
 						Name: "another-broken-project",
-						Diagnostics: []*parser.Diagnostic{
-							{Critical: true, Error: "Module not found: ./modules/vpc"},
-							{Critical: true, Error: "Provider error: timeout"},
+						Diagnostics: []*diagnostic.Diagnostic{
+							{Critical: true, Type: parserpb.DiagnosticType_DIAGNOSTIC_TYPE_MODULE_FETCH_ERROR, Error: "Module not found: ./modules/vpc"},
+							{Critical: true, Type: parserpb.DiagnosticType_DIAGNOSTIC_TYPE_INVALID_TERRAFORM_CONFIGURATION, Error: "Provider error: timeout"},
 						},
 					},
 				},
@@ -251,21 +252,21 @@ func TestRender(t *testing.T) {
 				PastTotalMonthlyCost: rat.New(100),
 				GuardrailResults: []*event.GuardrailResult{
 					{
-						GuardrailID:   "guardrail-1",
-						GuardrailName: "Cost increase > $100",
-						Triggered:     true,
-						PRComment:   true,
-						BlockPR:     true,
-						Increase:    rat.New(400),
-						PercentIncrease: rat.New(400),
+						GuardrailID:            "guardrail-1",
+						GuardrailName:          "Cost increase > $100",
+						Triggered:              true,
+						PRComment:              true,
+						BlockPR:                true,
+						Increase:               rat.New(400),
+						PercentIncrease:        rat.New(400),
 						TriggeringProjectNames: []string{"my-project"},
 					},
 				},
 				Projects: []ProjectResult{
 					{
-						Name:                  "my-project",
-						TotalMonthlyCost:      rat.New(500),
-						PastTotalMonthlyCost:  rat.New(100),
+						Name:                 "my-project",
+						TotalMonthlyCost:     rat.New(500),
+						PastTotalMonthlyCost: rat.New(100),
 						Resources: []*provider.Resource{
 							{
 								Name:        "aws_instance.big",
@@ -373,17 +374,17 @@ func TestRender(t *testing.T) {
 				CommitSHA:        "abc123",
 				TaggingPolicyResults: []*event.TaggingPolicyResult{
 					{
-						Name:      "Require env tag",
+						Name:        "Require env tag",
 						TagPolicyID: "tp-1",
-						Message:   "All resources must have an env tag.",
-						BlockPR:   true,
-						PRComment: true,
+						Message:     "All resources must have an env tag.",
+						BlockPR:     true,
+						PRComment:   true,
 						FailingResources: []event.TagPolicyResultResource{
 							{
-								Address:      "aws_instance.web",
-								Path:         "main.tf",
-								Line:         10,
-								ProjectNames: []string{"my-project"},
+								Address:              "aws_instance.web",
+								Path:                 "main.tf",
+								Line:                 10,
+								ProjectNames:         []string{"my-project"},
 								MissingMandatoryTags: []string{"env"},
 							},
 							{
@@ -553,9 +554,9 @@ func TestRender(t *testing.T) {
 				},
 				Projects: []ProjectResult{
 					{
-						Name:                  "project-a",
-						TotalMonthlyCost:      rat.New(600),
-						PastTotalMonthlyCost:  rat.New(300),
+						Name:                 "project-a",
+						TotalMonthlyCost:     rat.New(600),
+						PastTotalMonthlyCost: rat.New(300),
 						Resources: []*provider.Resource{
 							{Name: "aws_instance.a", Action: provider.ResourceAction_CREATE, IsSupported: true},
 						},
@@ -585,9 +586,9 @@ func TestRender(t *testing.T) {
 						},
 					},
 					{
-						Name:                  "project-b",
-						TotalMonthlyCost:      rat.New(400),
-						PastTotalMonthlyCost:  rat.New(200),
+						Name:                 "project-b",
+						TotalMonthlyCost:     rat.New(400),
+						PastTotalMonthlyCost: rat.New(200),
 						Resources: []*provider.Resource{
 							{Name: "aws_instance.b", Action: provider.ResourceAction_MODIFY, IsSupported: true},
 						},

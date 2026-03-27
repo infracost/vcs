@@ -419,7 +419,7 @@ func formatErroredProject(pr ProjectResult) string {
 		if !diag.Critical {
 			continue
 		}
-		pieces := strings.Split(diag.Error, ": ")
+		pieces := strings.Split(diag.FormatMessage(), ": ")
 		for x, piece := range pieces {
 			s += strings.Repeat(" ", x+1) + piece
 			if x == len(pieces)-1 {

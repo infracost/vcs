@@ -207,7 +207,7 @@ func formatCostDetailsMsg(hasUnsupported, hasError bool) string {
 // counting total failed issues on the base branch and subtracting fixed issues.
 // See: dashboard/api/src/services/templates/partials/preexistingIssuesSentenceText.ts
 func (data *Data) processPreexistingIssues(inputs *Inputs) {
-	if data.BaseBranchName == "" || data.OrgSlug == "" {
+	if data.BaseBranchName == "" || data.OrgSlug == "" || data.RepoID == "" {
 		return
 	}
 

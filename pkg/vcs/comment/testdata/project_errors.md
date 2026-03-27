@@ -5,9 +5,9 @@
 
 <ul>
 <li><b>broken-project</b></li>
-<pre>Failed to parse: invalid HCL</pre>
+<pre>HCL parse error: Failed to parse: invalid HCL</pre>
 <li><b>another-broken-project</b></li>
-<pre>Module not found: ./modules/vpc, Provider error: timeout</pre>
+<pre>Failed to load module: Module not found: ./modules/vpc, Invalid Terraform configuration: Provider error: timeout</pre>
 </ul>
 <hr/>
 This pull request is aligned with your company's FinOps policies and the Well-Architected Framework.
@@ -21,16 +21,19 @@ This pull request is aligned with your company's FinOps policies and the Well-Ar
 ──────────────────────────────────
 Project: another-broken-project
 Errors:
- Module not found:
-  ./modules/vpc
- Provider error:
-  timeout
+ Failed to load module:
+  Module not found:
+   ./modules/vpc
+ Invalid Terraform configuration:
+  Provider error:
+   timeout
 
 ──────────────────────────────────
 Project: broken-project
 Errors:
- Failed to parse:
-  invalid HCL
+ HCL parse error:
+  Failed to parse:
+   invalid HCL
 
 ──────────────────────────────────
 
