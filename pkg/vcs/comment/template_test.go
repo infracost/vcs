@@ -19,16 +19,15 @@ var update = flag.Bool("update", false, "update golden files")
 func TestRender(t *testing.T) {
 	tests := []struct {
 		name           string
-		isGithub       bool
 		maxCommentSize int
 		data           Data
 		goldenFile     string
 	}{
 		{
 			name:           "minimal_empty",
-			isGithub:       true,
 			maxCommentSize: 65000,
 			data: Data{
+				IsGithubApp:      true,
 				Currency:         "USD",
 				TotalMonthlyCost: rat.Zero,
 			},
@@ -36,9 +35,9 @@ func TestRender(t *testing.T) {
 		},
 		{
 			name:           "cost_increase",
-			isGithub:       true,
 			maxCommentSize: 65000,
 			data: Data{
+				IsGithubApp:          true,
 				Currency:             "USD",
 				TotalMonthlyCost:     rat.New(250),
 				PastTotalMonthlyCost: rat.New(200),
@@ -120,9 +119,9 @@ func TestRender(t *testing.T) {
 		},
 		{
 			name:           "project_errors",
-			isGithub:       true,
 			maxCommentSize: 65000,
 			data: Data{
+				IsGithubApp:      true,
 				Currency:         "USD",
 				TotalMonthlyCost: rat.Zero,
 				Projects: []ProjectResult{
@@ -145,9 +144,9 @@ func TestRender(t *testing.T) {
 		},
 		{
 			name:           "governance_finops",
-			isGithub:       true,
 			maxCommentSize: 65000,
 			data: Data{
+				IsGithubApp:      true,
 				Currency:         "USD",
 				TotalMonthlyCost: rat.New(100),
 				RepoURL:          "https://github.com/my-org/my-repo",
@@ -178,7 +177,6 @@ func TestRender(t *testing.T) {
 		},
 		{
 			name:           "fixed_issues",
-			isGithub:       false,
 			maxCommentSize: 140000,
 			data: Data{
 				Currency:         "USD",
@@ -207,9 +205,9 @@ func TestRender(t *testing.T) {
 		},
 		{
 			name:           "preexisting_issues",
-			isGithub:       true,
 			maxCommentSize: 65000,
 			data: Data{
+				IsGithubApp:      true,
 				Currency:         "USD",
 				TotalMonthlyCost: rat.New(100),
 				OrgSlug:          "my-org",
@@ -243,14 +241,60 @@ func TestRender(t *testing.T) {
 			goldenFile: "preexisting_issues.md",
 		},
 		{
-			name:           "guardrail_blocks",
-			isGithub:       true,
+			name:           "mixed_preexisting_and_new_issues",
 			maxCommentSize: 65000,
 			data: Data{
+				IsGithubApp:      true,
+				Currency:         "USD",
+				TotalMonthlyCost: rat.New(200),
+				RepoURL:          "https://github.com/my-org/my-repo",
+				CommitSHA:        "abc123",
+				PreviousFinOpsPolicyResults: []*provider.FinopsPolicyResult{
+					{
+						PolicySlug:                  "use-gp3",
+						PolicyName:                  "Use GP3 volumes",
+						IncludeInPullRequestComment: true,
+						FailingResources: []*provider.FinopsPolicyFailingResource{
+							{Id: "aws_ebs_volume.old"},
+						},
+					},
+				},
+				FinOpsPolicyResults: []*provider.FinopsPolicyResult{
+					{
+						PolicySlug:                  "use-gp3",
+						PolicyName:                  "Use GP3 volumes",
+						PolicyMessage:               "Use GP3 volumes instead of GP2 for better performance.",
+						IncludeInPullRequestComment: true,
+						FailingResources: []*provider.FinopsPolicyFailingResource{
+							{
+								Id:           "aws_ebs_volume.old",
+								CauseAddress: "aws_ebs_volume.old",
+								Issues: []*provider.FinopsResourceIssue{
+									{Description: "This volume uses GP2, consider upgrading to GP3"},
+								},
+							},
+							{
+								Id:           "aws_ebs_volume.new",
+								CauseAddress: "aws_ebs_volume.new",
+								Issues: []*provider.FinopsResourceIssue{
+									{Description: "This volume uses GP2, consider upgrading to GP3"},
+								},
+							},
+						},
+					},
+				},
+			},
+			goldenFile: "mixed_preexisting_and_new_issues.md",
+		},
+		{
+			name:           "guardrail_blocks",
+			maxCommentSize: 65000,
+			data: Data{
+				IsGithubApp:          true,
 				Currency:             "USD",
 				TotalMonthlyCost:     rat.New(500),
 				PastTotalMonthlyCost: rat.New(100),
-				GuardrailResults: []*event.GuardrailResult{
+				GuardrailResults: []event.GuardrailResult{
 					{
 						GuardrailID:            "guardrail-1",
 						GuardrailName:          "Cost increase > $100",
@@ -299,9 +343,9 @@ func TestRender(t *testing.T) {
 		},
 		{
 			name:           "environmental_metrics",
-			isGithub:       true,
 			maxCommentSize: 65000,
 			data: Data{
+				IsGithubApp:                    true,
 				EnableEnvironmentalMetrics:      true,
 				Currency:                        "USD",
 				TotalMonthlyCost:                rat.New(300),
@@ -365,14 +409,14 @@ func TestRender(t *testing.T) {
 		},
 		{
 			name:           "governance_tagging",
-			isGithub:       true,
 			maxCommentSize: 65000,
 			data: Data{
+				IsGithubApp:      true,
 				Currency:         "USD",
 				TotalMonthlyCost: rat.New(100),
 				RepoURL:          "https://github.com/my-org/my-repo",
 				CommitSHA:        "abc123",
-				TaggingPolicyResults: []*event.TaggingPolicyResult{
+				TaggingPolicyResults: []event.TaggingPolicyResult{
 					{
 						Name:        "Require env tag",
 						TagPolicyID: "tp-1",
@@ -404,7 +448,6 @@ func TestRender(t *testing.T) {
 		},
 		{
 			name:           "rich_cost_details",
-			isGithub:       false,
 			maxCommentSize: 65000,
 			data: Data{
 				Currency:             "EUR",
@@ -542,9 +585,9 @@ func TestRender(t *testing.T) {
 		},
 		{
 			name:           "truncated_cost_details",
-			isGithub:       true,
 			maxCommentSize: 2800,
 			data: Data{
+				IsGithubApp:          true,
 				Currency:             "USD",
 				TotalMonthlyCost:     rat.New(1000),
 				PastTotalMonthlyCost: rat.New(500),
@@ -625,7 +668,7 @@ func TestRender(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := Render(DefaultTemplate, tt.isGithub, tt.maxCommentSize, tt.data)
+			got, err := Render(DefaultTemplate, tt.maxCommentSize, tt.data)
 			if err != nil {
 				t.Fatalf("Render() error: %v", err)
 			}

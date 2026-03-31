@@ -30,7 +30,7 @@ const truncationBuffer = 1000
 // Render executes the given template against the provided data and
 // returns the rendered string, truncating cost details if necessary
 // to fit within maxCommentSize.
-func Render(tmpl *template.Template, isGithub bool, maxCommentSize int, data Data) (string, error) {
+func Render(tmpl *template.Template, maxCommentSize int, data Data) (string, error) {
 	inputs := new(Inputs)
 	data.processProjectErrors(inputs)
 
@@ -38,7 +38,7 @@ func Render(tmpl *template.Template, isGithub bool, maxCommentSize int, data Dat
 	securityIndex := buildPolicyFailureIndex(data.SecurityPolicyResults, data.PreviousSecurityPolicyResults)
 	taggingIndex := buildTaggingFailureIndex(data.TaggingPolicyResults, data.PreviousTaggingPolicyResults)
 
-	hasGuardrail := data.processGovernance(inputs, isGithub, finopsIndex, securityIndex, taggingIndex)
+	hasGuardrail := data.processGovernance(inputs, finopsIndex, securityIndex, taggingIndex)
 	data.processFixedIssues(inputs, finopsIndex, securityIndex, taggingIndex)
 	data.processDisplayCosts(inputs, hasGuardrail)
 	data.processProjectCosts(inputs)
@@ -95,7 +95,7 @@ func truncateMiddleStr(s string, maxLen int) string {
 		return sep
 	}
 	startChars := (charsToShow + 1) / 2 // ceil
-	backChars := charsToShow / 2         // floor
+	backChars := charsToShow / 2        // floor
 	return s[:startChars] + sep + s[len(s)-backChars:]
 }
 
@@ -380,7 +380,6 @@ type CostTableEntry struct {
 	// NewTotalCost is the formatted new monthly cost, e.g. "$560.00".
 	NewTotalCost string
 }
-
 
 type ProjectError struct {
 	Name  string

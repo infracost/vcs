@@ -49,7 +49,7 @@ type taggingFailureIndex struct {
 	previous map[string]map[string]bool
 }
 
-func buildTaggingFailureIndex(currentResults []*event.TaggingPolicyResult, previousResults []*event.TaggingPolicyResult) taggingFailureIndex {
+func buildTaggingFailureIndex(currentResults []event.TaggingPolicyResult, previousResults []event.TaggingPolicyResult) taggingFailureIndex {
 	idx := taggingFailureIndex{
 		current:  make(map[string]map[string]bool),
 		previous: make(map[string]map[string]bool),

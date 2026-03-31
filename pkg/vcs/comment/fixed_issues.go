@@ -77,7 +77,7 @@ func finopsFixedIssueCounts(previousResults []*provider.FinopsPolicyResult, inde
 
 // taggingFixedIssueCounts computes fixed issue counts for tagging policies.
 // A fixed issue is an address that was failing previously but is no longer failing.
-func taggingFixedIssueCounts(results []*event.TaggingPolicyResult, index taggingFailureIndex) []FixedIssueCount {
+func taggingFixedIssueCounts(results []event.TaggingPolicyResult, index taggingFailureIndex) []FixedIssueCount {
 	var counts []FixedIssueCount
 
 	for _, result := range results {
