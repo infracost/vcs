@@ -15,7 +15,7 @@ const (
 	GovernanceResourceLimit = 5
 )
 
-func (data *Data) processGovernance(inputs *Inputs, isGithub bool, finopsIndex, securityIndex policyFailureIndex, taggingIndex taggingFailureIndex) bool {
+func (data *Data) processGovernance(inputs *Inputs, finopsIndex, securityIndex policyFailureIndex, taggingIndex taggingFailureIndex) bool {
 	data.processPolicyResults(inputs, "FinOps policies", data.FinOpsPolicyResults, finopsIndex)
 	data.processPolicyResults(inputs, "Cloud security policies", data.SecurityPolicyResults, securityIndex)
 	data.processTaggingPolicyResults(inputs, taggingIndex)
@@ -39,7 +39,7 @@ func (data *Data) processGovernance(inputs *Inputs, isGithub bool, finopsIndex, 
 		}
 	}
 
-	inputs.GovernanceSentence = formatGovernanceSentence(totalIssues, hasGuardrail, isGithub)
+	inputs.GovernanceSentence = formatGovernanceSentence(totalIssues, hasGuardrail, data.IsGithubApp)
 	return hasGuardrail
 }
 
@@ -74,7 +74,7 @@ func (data *Data) processPolicyResults(inputs *Inputs, title string, results []*
 
 		for _, resource := range result.FailingResources {
 			// Skip resources that were already failing before this PR.
-			if result.OnlyAppliesToNewResources && prevFailing[resource.Id] {
+			if prevFailing[resource.Id] {
 				continue
 			}
 
@@ -252,7 +252,7 @@ func (data *Data) processGuardrailResults(inputs *Inputs) {
 
 // formatGovernanceSentence returns a summary line about policy alignment.
 // See: dashboard/api/src/services/templates/partials/governanceOutputs.ts formatGovernanceSentence (~line 214)
-func formatGovernanceSentence(totalIssuesCount int, hasGuardrail bool, isGithub bool) string {
+func formatGovernanceSentence(totalIssuesCount int, hasGuardrail bool, isGithubApp bool) string {
 	if totalIssuesCount == 0 {
 		if hasGuardrail {
 			return ""
@@ -265,7 +265,7 @@ func formatGovernanceSentence(totalIssuesCount int, hasGuardrail bool, isGithub 
 		fixing = `Consider fixing this issue, it doesn't align with your company's FinOps policies & the Well-Architected Framework.`
 	}
 
-	if isGithub {
+	if isGithubApp {
 		return fmt.Sprintf("<p>%s <b>Add a PR comment with <code>@infracost help</code> to see how you can dismiss or snooze issues and unblock your PR.</b></p>", fixing)
 	}
 
@@ -439,7 +439,7 @@ func formatTagIssues(resource event.TagPolicyResultResource) []string {
 }
 
 // formatGuardrailMessage builds the trigger description for a guardrail result.
-func formatGuardrailMessage(result *event.GuardrailResult) string {
+func formatGuardrailMessage(result event.GuardrailResult) string {
 	var parts []string
 
 	if result.Increase != nil && result.Increase.GreaterThanZero() {

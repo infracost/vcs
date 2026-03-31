@@ -74,7 +74,7 @@ func New(ctx context.Context, owner, repo, token string, prNumber int32, opts Op
 
 // GenerateComment renders a PR comment from the given data.
 func (g *GitHub) GenerateComment(data comment.Data) (string, error) {
-	return comment.Render(g.tmpl, true, 65000, data)
+	return comment.Render(g.tmpl, 65000, data)
 }
 
 // PostComment publishes a comment to the pull request using the given behavior.

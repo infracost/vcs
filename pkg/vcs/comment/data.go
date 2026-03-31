@@ -23,6 +23,11 @@ type Data struct {
 	// Available from runner's RunMetadata.UsageAPIEnabled.
 	UsageAPIEnabled bool
 
+	// IsGithubApp should be true when the repository is Github and the Github app (eg. the runner) is installed
+	// for this repository. It makes the comment include suggestions about using @infracost help which only works
+	// with the app in Github.
+	IsGithubApp bool
+
 	// OrgSlug is the organization slug, used to build links to Infracost Cloud settings.
 	OrgSlug string
 
@@ -79,12 +84,12 @@ type Data struct {
 
 	// TaggingPolicyResults contains the aggregated tagging evaluation results across
 	// all projects.
-	TaggingPolicyResults         []*event.TaggingPolicyResult
-	PreviousTaggingPolicyResults []*event.TaggingPolicyResult
+	TaggingPolicyResults         []event.TaggingPolicyResult
+	PreviousTaggingPolicyResults []event.TaggingPolicyResult
 
 	// GuardrailResults contains the aggregated guardrail results.
-	GuardrailResults         []*event.GuardrailResult
-	PreviousGuardrailResults []*event.GuardrailResult
+	GuardrailResults         []event.GuardrailResult
+	PreviousGuardrailResults []event.GuardrailResult
 }
 
 // ResourceSummary contains aggregated resource counts across all projects.
