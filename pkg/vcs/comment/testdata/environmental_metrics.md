@@ -23,7 +23,7 @@ Graviton instances are more energy efficient.
 
   </table>
 <details >
-  <summary><b>Monthly estimate increased by $100.00 📈</b> (🌱 emit 500.0 kg CO₂e - that's more than 3.3 flights between London & Paris)</summary>
+  <summary><b>Monthly estimate increased by $100 📈</b> (🌱 emit 500.0 kg CO₂e - that's more than 3.3 flights between London & Paris)</summary>
   <br/>
 
 <table>
@@ -37,10 +37,10 @@ Graviton instances are more energy efficient.
   <tbody>
     <tr>
       <td>my-project</td>
-      <td align="right">+$100.00</td>
+      <td align="right">+$100</td>
       <td align="right">-</td>
-      <td align="right">+$100.00 (+50%)</td>
-      <td align="right">$300.00</td>
+      <td align="right">+$100 (+50%)</td>
+      <td align="right">$300</td>
     </tr>
   </tbody>
 </table>
@@ -59,10 +59,10 @@ Key: * usage cost, ~ changed, + added, - removed
 Project: my-project
 
 ~ aws_instance.web
-  +$100.00 ($200.00 → $300.00)
+  +$100 ($200 → $300)
 
 Monthly cost change for my-project
-Amount:  +$100.00 ($200.00 → $300.00)
+Amount:  +$100 ($200 → $300)
 Percent: +50%
 
 ──────────────────────────────────

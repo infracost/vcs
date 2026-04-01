@@ -1,7 +1,7 @@
 <h3>💰 Infracost report</h3>
 This pull request is aligned with your company's FinOps policies and the Well-Architected Framework.
 <details >
-  <summary><b>Monthly estimate increased by $50.00 📈</b> </summary>
+  <summary><b>Monthly estimate increased by $50 📈</b> </summary>
   <br/>
 
 <table>
@@ -15,10 +15,10 @@ This pull request is aligned with your company's FinOps policies and the Well-Ar
   <tbody>
     <tr>
       <td>my-project</td>
-      <td align="right">+$45.00</td>
-      <td align="right">+$5.00</td>
-      <td align="right">+$50.00 (+25%)</td>
-      <td align="right">$250.00</td>
+      <td align="right">+$45</td>
+      <td align="right">+$5</td>
+      <td align="right">+$50 (+25%)</td>
+      <td align="right">$250</td>
     </tr>
   </tbody>
 </table>
@@ -35,13 +35,13 @@ Key: * usage cost, ~ changed, + added, - removed
 Project: my-project
 
 ~ aws_instance.web
-  +$50.00 ($200.00 → $250.00)
+  +$50 ($200 → $250)
 
     ~ Linux/UNIX usage (on-demand, m5.xlarge)
-      +$50.00 ($70.00 → $140.00)
+      +$50 ($70 → $140)
 
 Monthly cost change for my-project
-Amount:  +$50.00 ($200.00 → $250.00)
+Amount:  +$50 ($200 → $250)
 Percent: +25%
 
 ──────────────────────────────────

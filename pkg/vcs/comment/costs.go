@@ -202,10 +202,16 @@ func formatPercentChange(oldCost, newCost *rat.Rat) string {
 	return fmt.Sprintf("%s%s%%", percentSym, p.StringFixed(0))
 }
 
-// formatCost formats a cost value with currency symbol.
+// formatCost formats a cost value with currency symbol, matching the
+// dashboard's autoDecimals behavior: values with absolute value >= 1 (or zero)
+// are rounded to whole numbers, smaller values show 2 decimal places.
+// See: dashboard/api/src/utils/format.ts CurrencyFormatter.formatCost
 func formatCost(d *rat.Rat, currency string) string {
-	if d == nil {
-		return currencySymbol(currency) + "0.00"
+	if d == nil || d.IsZero() {
+		return currencySymbol(currency) + "0"
+	}
+	if d.Abs().GreaterThanOrEqual(rat.New(1)) {
+		return currencySymbol(currency) + d.StringFixed(0)
 	}
 	return currencySymbol(currency) + d.StringFixed(2)
 }

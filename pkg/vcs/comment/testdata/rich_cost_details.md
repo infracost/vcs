@@ -1,7 +1,7 @@
 <h3>💰 Infracost report</h3>
 This pull request is aligned with your company's FinOps policies and the Well-Architected Framework.
 <details >
-  <summary><b>Monthly estimate increased by €300.00 📈</b> </summary>
+  <summary><b>Monthly estimate increased by €300 📈</b> </summary>
   <br/>
 
 <table>
@@ -17,18 +17,18 @@ This pull request is aligned with your company's FinOps policies and the Well-Ar
     <tr>
       <td>my-project</td>
       <td>modules/compute</td>
-      <td align="right">+€190.00</td>
-      <td align="right">+€10.00</td>
-      <td align="right">+€200.00 (+67%)</td>
-      <td align="right">€500.00</td>
+      <td align="right">+€190</td>
+      <td align="right">+€10</td>
+      <td align="right">+€200 (+67%)</td>
+      <td align="right">€500</td>
     </tr>
     <tr>
       <td>my-project</td>
       <td>modules/network</td>
-      <td align="right">+€100.00</td>
+      <td align="right">+€100</td>
       <td align="right">-</td>
-      <td align="right">+€100.00 (+50%)</td>
-      <td align="right">€300.00</td>
+      <td align="right">+€100 (+50%)</td>
+      <td align="right">€300</td>
     </tr>
   </tbody>
 </table>
@@ -47,24 +47,24 @@ Module path: modules/compute
 Workspace: prod
 
 ~ aws_instance.web
-  +€180.00 (€300.00 → €480.00)
+  +€180 (€300 → €480)
 
     ~ Compute (on-demand, m5.xlarge)
-      +€70.00 (€70.00 → €140.00)
+      +€70 (€70 → €140)
 
     ~ root_block_device
 
         ~ Storage (gp3)
-          +€4.00 (€4.00 → €8.00)
+          +€4 (€4 → €8)
 
 + aws_s3_bucket.logs
-  +€20.00
+  +€20
 
     + Storage (S3)
-      +€23.00, +1000 GB*
+      +€23, +1000 GB*
 
 Monthly cost change for my-project (Module path: modules/compute, Workspace: prod)
-Amount:  +€200.00 (EUR) (€300.00 → €500.00)
+Amount:  +€200 (EUR) (€300 → €500)
 Percent: +67%
 
 ──────────────────────────────────
@@ -73,10 +73,10 @@ Module path: modules/network
 Workspace: prod
 
 + aws_nat_gateway.main
-  +€100.00
+  +€100
 
 Monthly cost change for my-project (Module path: modules/network, Workspace: prod)
-Amount:  +€100.00 (EUR) (€200.00 → €300.00)
+Amount:  +€100 (EUR) (€200 → €300)
 Percent: +50%
 
 ──────────────────────────────────

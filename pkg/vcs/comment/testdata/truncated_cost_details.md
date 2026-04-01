@@ -1,7 +1,7 @@
 <h3>💰 Infracost report</h3>
 This pull request is aligned with your company's FinOps policies and the Well-Architected Framework.
 <details >
-  <summary><b>Monthly estimate increased by $500.00 📈</b> </summary>
+  <summary><b>Monthly estimate increased by $500 📈</b> </summary>
   <br/>
 
 <table>
@@ -15,17 +15,17 @@ This pull request is aligned with your company's FinOps policies and the Well-Ar
   <tbody>
     <tr>
       <td>project-a</td>
-      <td align="right">+$300.00</td>
+      <td align="right">+$300</td>
       <td align="right">-</td>
-      <td align="right">+$300.00 (+100%)</td>
-      <td align="right">$600.00</td>
+      <td align="right">+$300 (+100%)</td>
+      <td align="right">$600</td>
     </tr>
     <tr>
       <td>project-b</td>
-      <td align="right">+$200.00</td>
+      <td align="right">+$200</td>
       <td align="right">-</td>
-      <td align="right">+$200.00 (+100%)</td>
-      <td align="right">$400.00</td>
+      <td align="right">+$200 (+100%)</td>
+      <td align="right">$400</td>
     </tr>
   </tbody>
 </table>
@@ -38,7 +38,7 @@ This pull request is aligned with your company's FinOps policies and the Well-Ar
 ```
 Key: * usage cost, ~ changed, + added, - removed
 
-──────────�...sageyml) for other options.
+──────────────�...nfracost-usageyml) for other options.
 
 5 cloud resources were detected:
 ∙ 5 were estimated

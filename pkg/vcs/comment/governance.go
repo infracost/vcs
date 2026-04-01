@@ -7,6 +7,7 @@ import (
 
 	"github.com/infracost/go-proto/pkg/event"
 	"github.com/infracost/go-proto/pkg/rat"
+	protoevent "github.com/infracost/proto/gen/go/infracost/parser/event"
 	"github.com/infracost/proto/gen/go/infracost/provider"
 )
 
@@ -234,7 +235,7 @@ func (data *Data) processGuardrailResults(inputs *Inputs) {
 		entry := GovernanceEntry{
 			Title:    title,
 			Blocking: result.BlockPR,
-			Message:  formatGuardrailMessage(result),
+			Message:  formatGuardrailMessage(result, data.Currency),
 		}
 
 		table.Entries = append(table.Entries, entry)
@@ -438,19 +439,57 @@ func formatTagIssues(resource event.TagPolicyResultResource) []string {
 	return issues
 }
 
-// formatGuardrailMessage builds the trigger description for a guardrail result.
-func formatGuardrailMessage(result event.GuardrailResult) string {
+// formatGuardrailMessage builds the trigger description for a guardrail result,
+// matching the dashboard's buildTriggerReason logic.
+// See: dashboard/api/src/services/guardrails.ts buildTriggerReason (~line 1008)
+func formatGuardrailMessage(result event.GuardrailResult, currency string) string {
 	var parts []string
 
-	if result.Increase != nil && result.Increase.GreaterThanZero() {
-		parts = append(parts, fmt.Sprintf("Cost increase: %s/mo", result.Increase.StringFixed(2)))
-	}
-	if result.PercentIncrease != nil && result.PercentIncrease.GreaterThanZero() {
-		parts = append(parts, fmt.Sprintf("(%s%%)", result.PercentIncrease.StringFixed(0)))
+	if result.Scope == protoevent.Guardrail_PROJECT {
+		parts = append(parts, "At least one project exceeded per-project threshold.")
 	}
 
-	if len(result.TriggeringProjectNames) > 0 {
-		parts = append(parts, fmt.Sprintf("in %s", formatProjectNamesLabel(result.TriggeringProjectNames)))
+	hasIncrease := result.IncreaseThreshold != nil
+	hasPercent := result.IncreasePercentThreshold != nil
+
+	if hasIncrease {
+		cost := formatCost(result.Increase, currency)
+		if hasPercent {
+			parts = append(parts, fmt.Sprintf(
+				"Cost increased by %s (%s%%), threshold was %s and %s%%.",
+				cost,
+				result.PercentIncrease.StringFixed(0),
+				formatCost(result.IncreaseThreshold, currency),
+				result.IncreasePercentThreshold.StringFixed(0),
+			))
+		} else {
+			parts = append(parts, fmt.Sprintf(
+				"Cost increased by %s, threshold was %s.",
+				cost,
+				formatCost(result.IncreaseThreshold, currency),
+			))
+		}
+	} else if hasPercent {
+		if result.PercentIncrease != nil && !result.PercentIncrease.IsZero() {
+			parts = append(parts, fmt.Sprintf(
+				"Cost increased by %s (%s%%), threshold was %s%%.",
+				formatCost(result.Increase, currency),
+				result.PercentIncrease.StringFixed(0),
+				result.IncreasePercentThreshold.StringFixed(0),
+			))
+		}
+	}
+
+	if result.TotalThreshold != nil {
+		parts = append(parts, fmt.Sprintf(
+			"New monthly cost was %s, threshold was %s.",
+			formatCost(result.TotalMonthlyCost, currency),
+			formatCost(result.TotalThreshold, currency),
+		))
+	}
+
+	if result.Message != "" {
+		parts = append(parts, result.Message)
 	}
 
 	return strings.Join(parts, " ")
