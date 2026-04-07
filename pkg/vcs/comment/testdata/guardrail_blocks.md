@@ -10,12 +10,12 @@
 </td></tr>
 <tr><td></td><td>
 
-Cost increase: 400.00/mo (400%) in project `my-project`
+At least one project exceeded per-project threshold. Cost increased by $400, threshold was $100.
 </td></tr>
 
   </table>
 <details open>
-  <summary><b>Monthly estimate increased by $400.00 📈</b> </summary>
+  <summary><b>Monthly estimate increased by $400 📈</b> </summary>
   <br/>
 
 <table>
@@ -29,10 +29,10 @@ Cost increase: 400.00/mo (400%) in project `my-project`
   <tbody>
     <tr>
       <td>my-project</td>
-      <td align="right">+$400.00</td>
+      <td align="right">+$400</td>
       <td align="right">-</td>
-      <td align="right">+$400.00 (+400%)</td>
-      <td align="right">$500.00</td>
+      <td align="right">+$400 (+400%)</td>
+      <td align="right">$500</td>
     </tr>
   </tbody>
 </table>
@@ -49,10 +49,10 @@ Key: * usage cost, ~ changed, + added, - removed
 Project: my-project
 
 ~ aws_instance.big
-  +$400.00 ($100.00 → $500.00)
+  +$400 ($100 → $500)
 
 Monthly cost change for my-project
-Amount:  +$400.00 ($100.00 → $500.00)
+Amount:  +$400 ($100 → $500)
 Percent: +400%
 
 ──────────────────────────────────

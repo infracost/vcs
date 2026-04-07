@@ -146,8 +146,8 @@ func formatCostChangeSentence(data *Data) string {
 	currency := data.Currency
 
 	if past == nil {
-		return fmt.Sprintf("Monthly estimate increased by %s%s 📈",
-			currencySymbol(currency), total.StringFixed(2))
+		return fmt.Sprintf("Monthly estimate increased by %s 📈",
+			formatCost(total, currency))
 	}
 
 	if past.Equals(total) {
@@ -155,7 +155,7 @@ func formatCostChangeSentence(data *Data) string {
 	}
 
 	diff := total.Sub(past).Abs()
-	change := currencySymbol(currency) + diff.StringFixed(2)
+	change := formatCost(diff, currency)
 
 	if past.GreaterThan(total) {
 		return fmt.Sprintf("Monthly estimate decreased by %s 📉", change)

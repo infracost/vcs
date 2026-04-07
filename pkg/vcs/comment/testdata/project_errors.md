@@ -12,7 +12,7 @@
 <hr/>
 This pull request is aligned with your company's FinOps policies and the Well-Architected Framework.
 <details >
-  <summary><b>Monthly estimate increased by $0.00 📈</b> </summary>
+  <summary><b>Monthly estimate increased by $0 📈</b> </summary>
   <br/>
   <details>
   <summary>Estimate details (includes details of skipped projects due to errors)</summary>

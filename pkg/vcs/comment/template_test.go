@@ -11,6 +11,7 @@ import (
 	"github.com/infracost/go-proto/pkg/event"
 	"github.com/infracost/go-proto/pkg/rat"
 	parserpb "github.com/infracost/proto/gen/go/infracost/parser"
+	protoevent "github.com/infracost/proto/gen/go/infracost/parser/event"
 	"github.com/infracost/proto/gen/go/infracost/provider"
 )
 
@@ -304,6 +305,8 @@ func TestRender(t *testing.T) {
 						Increase:               rat.New(400),
 						PercentIncrease:        rat.New(400),
 						TriggeringProjectNames: []string{"my-project"},
+						Scope:                  protoevent.Guardrail_PROJECT,
+						IncreaseThreshold:      rat.New(100),
 					},
 				},
 				Projects: []ProjectResult{
