@@ -4,8 +4,8 @@ go 1.25.5
 
 require (
 	github.com/google/go-cmp v0.7.0
-	github.com/infracost/go-proto v0.12.1-0.20260415195028-660fcf52a50b
-	github.com/infracost/proto v1.29.1-0.20260415193526-63cb3df7afe9
+	github.com/infracost/go-proto v1.13.0
+	github.com/infracost/proto v1.34.0
 	github.com/shurcooL/githubv4 v0.0.0-20260209031235-2402fdf4a9ed
 	golang.org/x/oauth2 v0.36.0
 )
