@@ -41,7 +41,6 @@ No cloud resources were detected
 ```
   </details>
 
-
 </details>
 
 <hr/>

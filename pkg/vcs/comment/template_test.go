@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/infracost/go-proto/pkg/diagnostic"
@@ -666,6 +667,244 @@ func TestRender(t *testing.T) {
 				},
 			},
 			goldenFile: "truncated_cost_details.md",
+		},
+		{
+			name:           "budget_under",
+			maxCommentSize: 65000,
+			data: Data{
+				Currency:             "USD",
+				RepoName:             "my-repo",
+				TotalMonthlyCost:     rat.New(500),
+				PastTotalMonthlyCost: rat.New(400),
+				Projects: []ProjectResult{
+					{
+						Name:                 "my-project",
+						TotalMonthlyCost:     rat.New(500),
+						PastTotalMonthlyCost: rat.New(400),
+						Resources: []*provider.Resource{
+							{Name: "aws_instance.web", Action: provider.ResourceAction_MODIFY, IsSupported: true},
+						},
+						DiffBreakdown: &CostBreakdown{
+							TotalMonthlyCost: rat.New(100),
+							Resources: []BreakdownResource{
+								{Name: "aws_instance.web", MonthlyCost: rat.New(100), Tags: map[string]string{"env": "production"}},
+							},
+						},
+					},
+				},
+				BudgetResults: []BudgetResult{
+					{
+						Tags:        []BudgetTag{{Key: "env", Value: "production"}},
+						StartDate:   time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+						EndDate:     time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+						Amount:      rat.New(1000),
+						CurrentCost: rat.New(500),
+					},
+				},
+			},
+			goldenFile: "budget_under.md",
+		},
+		{
+			name:           "budget_over",
+			maxCommentSize: 65000,
+			data: Data{
+				Currency:             "USD",
+				RepoName:             "my-repo",
+				TotalMonthlyCost:     rat.New(500),
+				PastTotalMonthlyCost: rat.New(400),
+				Projects: []ProjectResult{
+					{
+						Name:                 "my-project",
+						TotalMonthlyCost:     rat.New(500),
+						PastTotalMonthlyCost: rat.New(400),
+						Resources: []*provider.Resource{
+							{Name: "aws_instance.web", Action: provider.ResourceAction_MODIFY, IsSupported: true},
+						},
+						DiffBreakdown: &CostBreakdown{
+							TotalMonthlyCost: rat.New(100),
+							Resources: []BreakdownResource{
+								{Name: "aws_instance.web", MonthlyCost: rat.New(100), Tags: map[string]string{"env": "production"}},
+							},
+						},
+					},
+				},
+				BudgetResults: []BudgetResult{
+					{
+						Tags:        []BudgetTag{{Key: "env", Value: "production"}},
+						StartDate:   time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+						EndDate:     time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+						Amount:      rat.New(400),
+						CurrentCost: rat.New(500),
+					},
+				},
+			},
+			goldenFile: "budget_over.md",
+		},
+		{
+			name:           "budget_over_custom_message",
+			maxCommentSize: 65000,
+			data: Data{
+				Currency:             "USD",
+				RepoName:             "my-repo",
+				TotalMonthlyCost:     rat.New(500),
+				PastTotalMonthlyCost: rat.New(400),
+				Projects: []ProjectResult{
+					{
+						Name:                 "my-project",
+						TotalMonthlyCost:     rat.New(500),
+						PastTotalMonthlyCost: rat.New(400),
+						Resources: []*provider.Resource{
+							{Name: "aws_instance.web", Action: provider.ResourceAction_MODIFY, IsSupported: true},
+						},
+						DiffBreakdown: &CostBreakdown{
+							TotalMonthlyCost: rat.New(100),
+							Resources: []BreakdownResource{
+								{Name: "aws_instance.web", MonthlyCost: rat.New(100), Tags: map[string]string{"env": "production"}},
+							},
+						},
+					},
+				},
+				BudgetResults: []BudgetResult{
+					{
+						Tags:                 []BudgetTag{{Key: "env", Value: "production"}},
+						StartDate:            time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+						EndDate:              time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+						Amount:               rat.New(400),
+						CurrentCost:          rat.New(500),
+						CustomOverrunMessage: "Contact the FinOps team before proceeding",
+					},
+				},
+			},
+			goldenFile: "budget_over_custom_message.md",
+		},
+		{
+			name:           "budget_guardrail_triggered",
+			maxCommentSize: 65000,
+			data: Data{
+				Currency:             "USD",
+				RepoName:             "my-repo",
+				TotalMonthlyCost:     rat.New(500),
+				PastTotalMonthlyCost: rat.New(100),
+				GuardrailResults: []event.GuardrailResult{
+					{
+						GuardrailID:   "g-1",
+						GuardrailName: "Cost increase > $100",
+						Triggered:     true,
+						PRComment:     true,
+						BlockPR:       true,
+						Increase:      rat.New(400),
+						Scope:         protoevent.Guardrail_REPO,
+					},
+				},
+				Projects: []ProjectResult{
+					{
+						Name:                 "my-project",
+						TotalMonthlyCost:     rat.New(500),
+						PastTotalMonthlyCost: rat.New(100),
+						Resources: []*provider.Resource{
+							{Name: "aws_instance.web", Action: provider.ResourceAction_CREATE, IsSupported: true},
+						},
+						DiffBreakdown: &CostBreakdown{
+							TotalMonthlyCost: rat.New(400),
+							Resources: []BreakdownResource{
+								{Name: "aws_instance.web", MonthlyCost: rat.New(400), Tags: map[string]string{"env": "production"}},
+							},
+						},
+					},
+				},
+				BudgetResults: []BudgetResult{
+					{
+						Tags:        []BudgetTag{{Key: "env", Value: "production"}},
+						StartDate:   time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+						EndDate:     time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+						Amount:      rat.New(1000),
+						CurrentCost: rat.New(500),
+					},
+				},
+			},
+			goldenFile: "budget_guardrail_triggered.md",
+		},
+		{
+			name:           "budget_no_matching_tags",
+			maxCommentSize: 65000,
+			data: Data{
+				Currency:             "USD",
+				RepoName:             "my-repo",
+				TotalMonthlyCost:     rat.New(500),
+				PastTotalMonthlyCost: rat.New(400),
+				Projects: []ProjectResult{
+					{
+						Name:                 "my-project",
+						TotalMonthlyCost:     rat.New(500),
+						PastTotalMonthlyCost: rat.New(400),
+						Resources: []*provider.Resource{
+							{Name: "aws_instance.web", Action: provider.ResourceAction_MODIFY, IsSupported: true},
+						},
+						DiffBreakdown: &CostBreakdown{
+							TotalMonthlyCost: rat.New(100),
+							Resources: []BreakdownResource{
+								{Name: "aws_instance.web", MonthlyCost: rat.New(100), Tags: map[string]string{"env": "staging"}},
+							},
+						},
+					},
+				},
+				BudgetResults: []BudgetResult{
+					{
+						Tags:        []BudgetTag{{Key: "env", Value: "production"}},
+						StartDate:   time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+						EndDate:     time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+						Amount:      rat.New(1000),
+						CurrentCost: rat.New(500),
+					},
+				},
+			},
+			goldenFile: "budget_no_matching_tags.md",
+		},
+		{
+			name:           "budget_multiple",
+			maxCommentSize: 65000,
+			data: Data{
+				Currency:             "USD",
+				RepoName:             "my-repo",
+				TotalMonthlyCost:     rat.New(800),
+				PastTotalMonthlyCost: rat.New(600),
+				Projects: []ProjectResult{
+					{
+						Name:                 "my-project",
+						TotalMonthlyCost:     rat.New(800),
+						PastTotalMonthlyCost: rat.New(600),
+						Resources: []*provider.Resource{
+							{Name: "aws_instance.web", Action: provider.ResourceAction_MODIFY, IsSupported: true},
+							{Name: "aws_instance.api", Action: provider.ResourceAction_MODIFY, IsSupported: true},
+						},
+						DiffBreakdown: &CostBreakdown{
+							TotalMonthlyCost: rat.New(200),
+							Resources: []BreakdownResource{
+								{Name: "aws_instance.web", MonthlyCost: rat.New(100), Tags: map[string]string{"env": "production", "team": "frontend"}},
+								{Name: "aws_instance.api", MonthlyCost: rat.New(100), Tags: map[string]string{"env": "production", "team": "backend"}},
+							},
+						},
+					},
+				},
+				BudgetResults: []BudgetResult{
+					{
+						Tags:        []BudgetTag{{Key: "env", Value: "production"}},
+						StartDate:   time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+						EndDate:     time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC),
+						Amount:      rat.New(2000),
+						CurrentCost: rat.New(800),
+					},
+					{
+						Tags:                 []BudgetTag{{Key: "team", Value: "frontend"}},
+						StartDate:            time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC),
+						EndDate:              time.Date(2026, 6, 30, 0, 0, 0, 0, time.UTC),
+						Amount:               rat.New(300),
+						CurrentCost:          rat.New(400),
+						CustomOverrunMessage: "Notify #frontend-costs",
+					},
+				},
+			},
+			goldenFile: "budget_multiple.md",
 		},
 	}
 

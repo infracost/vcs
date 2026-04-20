@@ -1,0 +1,77 @@
+{{- define "costChangesAndBudgets" }}
+{{- if gt (len .BudgetCostRows) 0 }}
+<hr/>
+
+## Cost changes &amp; budgets
+
+<table>
+  <thead>
+    <tr>
+      <td align="left">Cost estimate</td>
+      <td align="right">Previous&nbsp;cost</td>
+      <td align="right">Cost&nbsp;change</td>
+      <td align="right">New&nbsp;cost</td>
+    </tr>
+  </thead>
+  <tbody>
+    {{- range .BudgetCostRows }}
+    <tr>
+      <td align="left" valign="top">{{ .Label }}</td>
+      <td align="right" valign="top">{{ .PreviousCost }}</td>
+      <td align="right" valign="top"><strong>{{ .CostChange }}</strong></td>
+      <td align="right" valign="top">{{ .NewCost }}</td>
+    </tr>
+    {{- end }}
+    {{- if .BudgetGuardrailNote }}
+      <tr>
+        <td colspan="4" align="left" valign="middle">{{ .BudgetGuardrailNote }}</td>
+      </tr>
+    {{- end }}
+    {{- if .BudgetCostNote }}
+      <tr>
+        <td colspan="4" align="left" valign="middle">{{ .BudgetCostNote }}</td>
+      </tr>
+    {{- end }}
+  </tbody>
+</table>
+
+{{- if gt (len .BudgetRows) 0 }}
+<table>
+  <thead>
+    <tr>
+      <td align="left">Budget scope</td>
+      <td align="right">Current cost</td>
+      <td align="right">Budget</td>
+    </tr>
+  </thead>
+  <tbody>
+    {{- range .BudgetRows }}
+    <tr>
+      <td align="left" valign="top">
+        {{ .Scope }}<br/>
+        <sub>From {{ .StartDate }} till {{ .EndDate }}</sub>
+      </td>
+      <td align="right" valign="top">{{ .CurrentCost }}</td>
+      <td align="right" valign="top"><strong>{{ .Budget }}</strong></td>
+    </tr>
+    {{- if .Message }}
+    <tr>
+      <td align="left" colspan="3" valign="top"> ↳ {{ .Message }}</td>
+    </tr>
+    {{- end }}
+    {{- end }}
+    {{- if $.BudgetOverrunNote }}
+    <tr>
+      <td colspan="3" align="left" valign="middle">{{ $.BudgetOverrunNote }}</td>
+    </tr>
+    {{- end }}
+    {{- if $.BudgetTagNote }}
+    <tr>
+      <td colspan="3" align="left" valign="middle">{{ $.BudgetTagNote }}</td>
+    </tr>
+    {{- end }}
+  </tbody>
+</table>
+{{- end }}
+{{- end }}
+{{- end }}

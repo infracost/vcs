@@ -1,6 +1,8 @@
 package comment
 
 import (
+	"time"
+
 	"github.com/infracost/go-proto/pkg/diagnostic"
 	"github.com/infracost/go-proto/pkg/event"
 	"github.com/infracost/go-proto/pkg/rat"
@@ -33,6 +35,9 @@ type Data struct {
 
 	// RepoID is the repository ID, used to build repo links in Infracost Cloud.
 	RepoID string
+
+	// RepoName is the repository name, used as the label in the budget cost row.
+	RepoName string
 
 	// BaseBranchName is the name of the default/base branch (e.g. "main").
 	// Empty when there is no base branch context available.
@@ -90,6 +95,11 @@ type Data struct {
 	// GuardrailResults contains the aggregated guardrail results.
 	GuardrailResults         []event.GuardrailResult
 	PreviousGuardrailResults []event.GuardrailResult
+
+	// BudgetResults contains pre-computed budget evaluation results.
+	// Each entry represents a budget with its current cost derived from scan resources.
+	// Produced by go-proto's Budgets.Evaluate.
+	BudgetResults []BudgetResult
 }
 
 // ResourceSummary contains aggregated resource counts across all projects.
@@ -116,6 +126,7 @@ type CostBreakdown struct {
 type BreakdownResource struct {
 	Name           string
 	MonthlyCost    *rat.Rat
+	Tags           map[string]string
 	CostComponents []BreakdownCostComponent
 	SubResources   []BreakdownResource
 }
@@ -182,4 +193,34 @@ type ProjectResult struct {
 
 	// PastDiagnostics contains any parsing errors or warnings for this project before the current changes.
 	PastDiagnostics []*diagnostic.Diagnostic
+}
+
+// BudgetTag is a key-value pair defining a budget's tag scope.
+type BudgetTag struct {
+	Key   string
+	Value string
+}
+
+// BudgetResult is the result of evaluating a single budget against scan data.
+// Produced by go-proto's budget evaluation: it matches scan resources by tag
+// and sums their costs to compute CurrentCost.
+type BudgetResult struct {
+	// Tags defines the budget scope (e.g. environment=production).
+	Tags []BudgetTag
+
+	// StartDate is the budget period start.
+	StartDate time.Time
+
+	// EndDate is the budget period end.
+	EndDate time.Time
+
+	// Amount is the budget limit.
+	Amount *rat.Rat
+
+	// CurrentCost is the total monthly cost of scan resources matching this
+	// budget's tags. Computed by go-proto from the scan results.
+	CurrentCost *rat.Rat
+
+	// CustomOverrunMessage is an optional message shown when the budget is exceeded.
+	CustomOverrunMessage string
 }

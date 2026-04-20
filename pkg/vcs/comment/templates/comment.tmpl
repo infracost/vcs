@@ -16,6 +16,7 @@
 
 {{- template "fixedIssues" . }}
 {{- end }}
+{{- template "costChangesAndBudgets" . }}
 {{- if .DisplayCosts }}
 <details {{ if .ExpandCosts }}open{{ end }}>
   <summary><b>{{ .CostChangeSentence }}</b> {{ .CarbonWaterSummary }}</summary>
@@ -29,7 +30,6 @@
 ```
   </details>
 
-{{/* TODO: Costs by tag is experimental and not yet included. See costs_by_tag.tmpl. */}}
 </details>
 
 <hr/>

@@ -40,6 +40,7 @@ func Render(tmpl *template.Template, maxCommentSize int, data Data) (string, err
 
 	hasGuardrail := data.processGovernance(inputs, finopsIndex, securityIndex, taggingIndex)
 	data.processFixedIssues(inputs, finopsIndex, securityIndex, taggingIndex)
+	data.processCostChangesAndBudgets(inputs)
 	data.processDisplayCosts(inputs, hasGuardrail)
 	data.processProjectCosts(inputs)
 	data.processProjectCostDetails(inputs)
@@ -334,11 +335,61 @@ type Inputs struct {
 	// or when guardrails are present.
 	PreexistingIssuesSentence string
 
-	// TODO: Costs by tag is experimental and not yet included in the template.
-	// When ready, add TagCostRowsByProvider map[string][]TagCostRow here.
-	// The data requires cloud billing API integration (not available in proto/go-proto).
-	// See: dashboard/api/src/services/templates/partials/cloudCostsByTag.ts
-	// See: costs_by_tag.tmpl for the template.
+	// BudgetCostRows contains repo-level cost change rows for the budget section.
+	BudgetCostRows []BudgetCostRow
+
+	// BudgetRows contains per-budget rows showing scope, period, and spend vs limit.
+	BudgetRows []BudgetRow
+
+	// BudgetGuardrailNote is "🔴  Cost anomaly guardrail triggered" when guardrails
+	// fired, empty otherwise.
+	BudgetGuardrailNote string
+
+	// BudgetCostNote is an explanatory footnote about how repo costs are estimated.
+	BudgetCostNote string
+
+	// BudgetOverrunNote is "🔴  Budget overrun detected" when any budget is exceeded,
+	// empty otherwise.
+	BudgetOverrunNote string
+
+	// BudgetTagNote is the explanatory footnote about tag-based actual costs.
+	BudgetTagNote string
+}
+
+// BudgetCostRow is a row in the cost estimate table within the budget section.
+type BudgetCostRow struct {
+	// Label is the row label, e.g. "Repo `my-repo`".
+	Label string
+
+	// PreviousCost is the formatted previous monthly cost.
+	PreviousCost string
+
+	// CostChange is the formatted cost diff, with 🔴 prefix if guardrail triggered.
+	CostChange string
+
+	// NewCost is the formatted new monthly cost.
+	NewCost string
+}
+
+// BudgetRow is a row in the budget table.
+type BudgetRow struct {
+	// Scope describes the budget's tag scope, e.g. "Tag `environment: production`".
+	Scope string
+
+	// StartDate is the budget period start formatted as "Jan 2006".
+	StartDate string
+
+	// EndDate is the budget period end formatted as "Jan 2006".
+	EndDate string
+
+	// CurrentCost is the formatted actual spend for this budget.
+	CurrentCost string
+
+	// Budget is the formatted budget amount with "% left" or "🔴 (OVER)".
+	Budget string
+
+	// Message is an optional custom overrun message (only set when over budget).
+	Message string
 }
 
 // FixedIssueCount holds the number of fixed issues for a single policy.
