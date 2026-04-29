@@ -54,13 +54,6 @@ func TestRender(t *testing.T) {
 						PastTotalMonthlyCost:      rat.New(200),
 						TotalMonthlyUsageCost:     rat.New(10),
 						PastTotalMonthlyUsageCost: rat.New(5),
-						Resources: []*provider.Resource{
-							{
-								Name:        "aws_instance.web",
-								Action:      provider.ResourceAction_CREATE,
-								IsSupported: true,
-							},
-						},
 						Breakdown: &CostBreakdown{
 							TotalMonthlyCost: rat.New(250),
 							Resources: []BreakdownResource{
@@ -200,10 +193,40 @@ func TestRender(t *testing.T) {
 						PolicySlug:                  "use-gp3",
 						IncludeInPullRequestComment: true,
 						FailingResources:            []*provider.FinopsPolicyFailingResource{},
+						PassingResourceIds:          []string{"aws_ebs_volume.old", "aws_ebs_volume.also_old"},
 					},
 				},
 			},
 			goldenFile: "fixed_issues.md",
+		},
+		{
+			name:           "deleted_resources_not_counted_as_fixed",
+			maxCommentSize: 140000,
+			data: Data{
+				Currency:         "USD",
+				TotalMonthlyCost: rat.New(100),
+				PreviousFinOpsPolicyResults: []*provider.FinopsPolicyResult{
+					{
+						PolicyName:                  "Use GP3 volumes",
+						PolicySlug:                  "use-gp3",
+						IncludeInPullRequestComment: true,
+						FailingResources: []*provider.FinopsPolicyFailingResource{
+							{Id: "aws_ebs_volume.kept"},
+							{Id: "aws_ebs_volume.deleted"},
+						},
+					},
+				},
+				FinOpsPolicyResults: []*provider.FinopsPolicyResult{
+					{
+						PolicyName:                  "Use GP3 volumes",
+						PolicySlug:                  "use-gp3",
+						IncludeInPullRequestComment: true,
+						FailingResources:            []*provider.FinopsPolicyFailingResource{},
+						PassingResourceIds:          []string{"aws_ebs_volume.kept"},
+					},
+				},
+			},
+			goldenFile: "deleted_resources_not_counted_as_fixed.md",
 		},
 		{
 			name:           "preexisting_issues",
@@ -315,13 +338,6 @@ func TestRender(t *testing.T) {
 						Name:                 "my-project",
 						TotalMonthlyCost:     rat.New(500),
 						PastTotalMonthlyCost: rat.New(100),
-						Resources: []*provider.Resource{
-							{
-								Name:        "aws_instance.big",
-								Action:      provider.ResourceAction_CREATE,
-								IsSupported: true,
-							},
-						},
 						Breakdown: &CostBreakdown{
 							TotalMonthlyCost: rat.New(500),
 							Resources: []BreakdownResource{
@@ -349,7 +365,7 @@ func TestRender(t *testing.T) {
 			name:           "environmental_metrics",
 			maxCommentSize: 65000,
 			data: Data{
-				IsGithubApp:                    true,
+				IsGithubApp:                     true,
 				EnableEnvironmentalMetrics:      true,
 				Currency:                        "USD",
 				TotalMonthlyCost:                rat.New(300),
@@ -385,9 +401,6 @@ func TestRender(t *testing.T) {
 						Name:                 "my-project",
 						TotalMonthlyCost:     rat.New(300),
 						PastTotalMonthlyCost: rat.New(200),
-						Resources: []*provider.Resource{
-							{Name: "aws_instance.web", Action: provider.ResourceAction_MODIFY, IsSupported: true},
-						},
 						Breakdown: &CostBreakdown{
 							TotalMonthlyCost: rat.New(300),
 							Resources: []BreakdownResource{
@@ -475,11 +488,6 @@ func TestRender(t *testing.T) {
 						PastTotalMonthlyCost:      rat.New(300),
 						TotalMonthlyUsageCost:     rat.New(20),
 						PastTotalMonthlyUsageCost: rat.New(10),
-						Resources: []*provider.Resource{
-							{Name: "aws_instance.web", Action: provider.ResourceAction_MODIFY, IsSupported: true},
-							{Name: "aws_s3_bucket.logs", Action: provider.ResourceAction_CREATE, IsSupported: true},
-							{Name: "aws_acm_certificate.cert", Action: provider.ResourceAction_CREATE, IsSupported: false},
-						},
 						Breakdown: &CostBreakdown{
 							TotalMonthlyCost: rat.New(500),
 							Resources: []BreakdownResource{
@@ -564,9 +572,6 @@ func TestRender(t *testing.T) {
 						Workspace:            "prod",
 						TotalMonthlyCost:     rat.New(300),
 						PastTotalMonthlyCost: rat.New(200),
-						Resources: []*provider.Resource{
-							{Name: "aws_nat_gateway.main", Action: provider.ResourceAction_CREATE, IsSupported: true},
-						},
 						Breakdown: &CostBreakdown{
 							TotalMonthlyCost: rat.New(300),
 							Resources: []BreakdownResource{
@@ -604,9 +609,6 @@ func TestRender(t *testing.T) {
 						Name:                 "project-a",
 						TotalMonthlyCost:     rat.New(600),
 						PastTotalMonthlyCost: rat.New(300),
-						Resources: []*provider.Resource{
-							{Name: "aws_instance.a", Action: provider.ResourceAction_CREATE, IsSupported: true},
-						},
 						Breakdown: &CostBreakdown{
 							TotalMonthlyCost: rat.New(600),
 							Resources: []BreakdownResource{
@@ -636,9 +638,6 @@ func TestRender(t *testing.T) {
 						Name:                 "project-b",
 						TotalMonthlyCost:     rat.New(400),
 						PastTotalMonthlyCost: rat.New(200),
-						Resources: []*provider.Resource{
-							{Name: "aws_instance.b", Action: provider.ResourceAction_MODIFY, IsSupported: true},
-						},
 						Breakdown: &CostBreakdown{
 							TotalMonthlyCost: rat.New(400),
 							Resources: []BreakdownResource{
@@ -681,9 +680,6 @@ func TestRender(t *testing.T) {
 						Name:                 "my-project",
 						TotalMonthlyCost:     rat.New(500),
 						PastTotalMonthlyCost: rat.New(400),
-						Resources: []*provider.Resource{
-							{Name: "aws_instance.web", Action: provider.ResourceAction_MODIFY, IsSupported: true},
-						},
 						DiffBreakdown: &CostBreakdown{
 							TotalMonthlyCost: rat.New(100),
 							Resources: []BreakdownResource{
@@ -717,9 +713,6 @@ func TestRender(t *testing.T) {
 						Name:                 "my-project",
 						TotalMonthlyCost:     rat.New(500),
 						PastTotalMonthlyCost: rat.New(400),
-						Resources: []*provider.Resource{
-							{Name: "aws_instance.web", Action: provider.ResourceAction_MODIFY, IsSupported: true},
-						},
 						DiffBreakdown: &CostBreakdown{
 							TotalMonthlyCost: rat.New(100),
 							Resources: []BreakdownResource{
@@ -753,9 +746,6 @@ func TestRender(t *testing.T) {
 						Name:                 "my-project",
 						TotalMonthlyCost:     rat.New(500),
 						PastTotalMonthlyCost: rat.New(400),
-						Resources: []*provider.Resource{
-							{Name: "aws_instance.web", Action: provider.ResourceAction_MODIFY, IsSupported: true},
-						},
 						DiffBreakdown: &CostBreakdown{
 							TotalMonthlyCost: rat.New(100),
 							Resources: []BreakdownResource{
@@ -801,9 +791,6 @@ func TestRender(t *testing.T) {
 						Name:                 "my-project",
 						TotalMonthlyCost:     rat.New(500),
 						PastTotalMonthlyCost: rat.New(100),
-						Resources: []*provider.Resource{
-							{Name: "aws_instance.web", Action: provider.ResourceAction_CREATE, IsSupported: true},
-						},
 						DiffBreakdown: &CostBreakdown{
 							TotalMonthlyCost: rat.New(400),
 							Resources: []BreakdownResource{
@@ -837,9 +824,6 @@ func TestRender(t *testing.T) {
 						Name:                 "my-project",
 						TotalMonthlyCost:     rat.New(500),
 						PastTotalMonthlyCost: rat.New(400),
-						Resources: []*provider.Resource{
-							{Name: "aws_instance.web", Action: provider.ResourceAction_MODIFY, IsSupported: true},
-						},
 						DiffBreakdown: &CostBreakdown{
 							TotalMonthlyCost: rat.New(100),
 							Resources: []BreakdownResource{
@@ -873,10 +857,6 @@ func TestRender(t *testing.T) {
 						Name:                 "my-project",
 						TotalMonthlyCost:     rat.New(800),
 						PastTotalMonthlyCost: rat.New(600),
-						Resources: []*provider.Resource{
-							{Name: "aws_instance.web", Action: provider.ResourceAction_MODIFY, IsSupported: true},
-							{Name: "aws_instance.api", Action: provider.ResourceAction_MODIFY, IsSupported: true},
-						},
 						DiffBreakdown: &CostBreakdown{
 							TotalMonthlyCost: rat.New(200),
 							Resources: []BreakdownResource{

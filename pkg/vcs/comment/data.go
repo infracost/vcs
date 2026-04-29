@@ -183,11 +183,6 @@ type ProjectResult struct {
 	// Available from runner's Project.Diff.
 	DiffBreakdown *CostBreakdown
 
-	// Resources contains the current resources with their costs from the
-	// provider output. Each resource has an Action field (CREATE, MODIFY,
-	// DELETE, NOOP) indicating whether it changed between runs.
-	Resources []*provider.Resource
-
 	// Diagnostics contains any parsing errors or warnings for this project.
 	Diagnostics []*diagnostic.Diagnostic
 

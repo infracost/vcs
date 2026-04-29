@@ -5,7 +5,6 @@ import (
 	"sort"
 
 	"github.com/infracost/go-proto/pkg/rat"
-	"github.com/infracost/proto/gen/go/infracost/provider"
 )
 
 // processProjectCosts builds the project costs table entries, determines which
@@ -120,17 +119,11 @@ func (data *Data) usageCostsMessage() string {
 	return fmt.Sprintf("*Usage costs can be estimated by updating %s, see %s for other options.", cloudSettingsStr, usageDocsStr)
 }
 
-// projectHasDiff returns true if any resource in the project has a non-NOOP action.
+// projectHasDiff returns true if the project's pre-computed diff breakdown
+// contains any resource entries. Matches the dashboard's projectHasDiff in
+// dashboard/api/src/services/templates/helpers.ts.
 func projectHasDiff(project ProjectResult) bool {
-	for _, r := range project.Resources {
-		switch r.Action {
-		case provider.ResourceAction_CREATE,
-			provider.ResourceAction_MODIFY,
-			provider.ResourceAction_DELETE:
-			return true
-		}
-	}
-	return false
+	return project.DiffBreakdown != nil && len(project.DiffBreakdown.Resources) > 0
 }
 
 // costChangeOpts controls formatting of cost change strings.

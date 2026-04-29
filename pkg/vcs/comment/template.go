@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
-
-	"github.com/infracost/proto/gen/go/infracost/provider"
 )
 
 const (
@@ -109,25 +107,12 @@ func (data *Data) processDisplayCosts(inputs *Inputs, hasGuardrail bool) {
 	}
 
 	hasError := len(inputs.ProjectErrors) > 0
+	hasUnsupported := data.Summary.TotalUnsupportedResources > 0
 	hasDiff := false
-	hasUnsupported := false
 
 	for _, project := range data.Projects {
-		for _, r := range project.Resources {
-			switch r.Action {
-			case provider.ResourceAction_CREATE,
-				provider.ResourceAction_MODIFY,
-				provider.ResourceAction_DELETE:
-				hasDiff = true
-			}
-			if !r.IsSupported && !r.IsFree {
-				hasUnsupported = true
-			}
-			if hasDiff && hasUnsupported {
-				break
-			}
-		}
-		if hasDiff && hasUnsupported {
+		if projectHasDiff(project) {
+			hasDiff = true
 			break
 		}
 	}
