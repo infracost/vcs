@@ -3,6 +3,7 @@ package comment
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/infracost/go-proto/pkg/rat"
 )
@@ -198,15 +199,51 @@ func formatPercentChange(oldCost, newCost *rat.Rat) string {
 // formatCost formats a cost value with currency symbol, matching the
 // dashboard's autoDecimals behavior: values with absolute value >= 1 (or zero)
 // are rounded to whole numbers, smaller values show 2 decimal places.
+// Negative values render with the sign before the currency symbol (e.g.
+// "-$1,616") and integer parts are formatted with thousand separators.
 // See: dashboard/api/src/utils/format.ts CurrencyFormatter.formatCost
 func formatCost(d *rat.Rat, currency string) string {
+	sym := currencySymbol(currency)
 	if d == nil || d.IsZero() {
-		return currencySymbol(currency) + "0"
+		return sym + "0"
 	}
-	if d.Abs().GreaterThanOrEqual(rat.New(1)) {
-		return currencySymbol(currency) + d.StringFixed(0)
+	abs := d.Abs()
+	decimals := 0
+	if abs.LessThan(rat.New(1)) {
+		decimals = 2
 	}
-	return currencySymbol(currency) + d.StringFixed(2)
+	formatted := withThousandSeparators(abs.StringFixed(decimals))
+	if d.LessThan(rat.Zero) {
+		return "-" + sym + formatted
+	}
+	return sym + formatted
+}
+
+// withThousandSeparators inserts commas every three digits in the integer
+// portion of a numeric string. The input is expected to be a decimal string
+// like "1234567" or "1234.56".
+func withThousandSeparators(s string) string {
+	intPart := s
+	frac := ""
+	if dot := strings.IndexByte(s, '.'); dot >= 0 {
+		intPart = s[:dot]
+		frac = s[dot:]
+	}
+	if len(intPart) <= 3 {
+		return intPart + frac
+	}
+	var b strings.Builder
+	first := len(intPart) % 3
+	if first == 0 {
+		first = 3
+	}
+	b.WriteString(intPart[:first])
+	for i := first; i < len(intPart); i += 3 {
+		b.WriteByte(',')
+		b.WriteString(intPart[i : i+3])
+	}
+	b.WriteString(frac)
+	return b.String()
 }
 
 // safeSub returns a - b, handling nils as zero.

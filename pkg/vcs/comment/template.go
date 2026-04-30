@@ -163,8 +163,9 @@ func formatCarbonWaterSummary(data *Data) string {
 	}
 
 	// Negate: the diff is emissions change, but formatCarbonWithExample
-	// expects a savings value (positive = avoided).
-	carbonStr := formatCarbonWithExample(diff.Neg())
+	// expects a savings value (positive = avoided). Pluralize the verb to
+	// match the dashboard's run-level summary ("avoids"/"emits").
+	carbonStr := formatCarbonWithExample(diff.Neg(), true)
 	if carbonStr == "" {
 		return ""
 	}
