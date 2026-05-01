@@ -1,4 +1,5 @@
 <h3>💰 Infracost report</h3>
+
 <p>Consider fixing this issue, it doesn't align with your company's FinOps policies & the Well-Architected Framework. <b>Add a PR comment with <code>@infracost help</code> to see how you can dismiss or snooze issues and unblock your PR.</b></p>
 
 <table>
@@ -18,12 +19,12 @@ Graviton instances are more energy efficient.
 `aws_instance.web`
   * Switch to Graviton instance type
     * 💰 save $600/year
-    * 🌱 avoid 2.40 t CO₂e - that's more than 16.0 flights between London & Paris
+    * 🌱 avoid 2.40 t CO₂e - that's more than 16 flights between London & Paris
     </td></tr>
 
   </table>
 <details >
-  <summary><b>Monthly estimate increased by $100 📈</b> (🌱 emit 500.0 kg CO₂e - that's more than 3.3 flights between London & Paris)</summary>
+  <summary><b>Monthly estimate increased by $100 📈</b> (🌱 emits 500.0 kg CO₂e - that's more than 3.3 flights between London & Paris)</summary>
   <br/>
 
 <table>

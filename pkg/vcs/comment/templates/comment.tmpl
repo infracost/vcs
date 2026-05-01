@@ -6,7 +6,9 @@
 
 
 {{- if .GovernanceSentence }}
+
 {{ .GovernanceSentence }}
+
 {{- end }}
 {{- if gt (len .GovernanceTables) 0 }}
 {{- template "governance" . }}

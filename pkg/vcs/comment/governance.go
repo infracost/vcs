@@ -3,6 +3,7 @@ package comment
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 
 	"github.com/infracost/go-proto/pkg/event"
@@ -545,7 +546,7 @@ func formatFinopsIssueDescription(issue *provider.FinopsResourceIssue, currency 
 		carbonGrams := rat.FromProto(issue.MonthlyCarbonSavingsGramsCo2E)
 		if carbonGrams != nil && !carbonGrams.IsZero() {
 			yearlyGrams := carbonGrams.Mul(rat.New(12))
-			carbonStr := formatCarbonWithExample(yearlyGrams)
+			carbonStr := formatCarbonWithExample(yearlyGrams, false)
 			if carbonStr != "" {
 				description = fmt.Sprintf("%s\n%s* %s", description, listIndent, carbonStr)
 			}
@@ -572,8 +573,11 @@ func formatPotentialSavings(monthlySavings *rat.Rat, currency string) string {
 }
 
 // formatCarbonWithExample formats CO2 savings with a real-world comparison.
+// When pluralize is true, the verb is conjugated for a third-person subject
+// (e.g. "avoids"/"emits") — used in the run-level summary where the subject
+// is the whole pull request. Singular form is used for per-issue rows.
 // See: dashboard/api/src/services/templates/formatHelpers.ts formatCarbonWithExample (~line 151)
-func formatCarbonWithExample(yearlyGrams *rat.Rat) string {
+func formatCarbonWithExample(yearlyGrams *rat.Rat, pluralize bool) string {
 	if yearlyGrams == nil || yearlyGrams.IsZero() {
 		return ""
 	}
@@ -591,6 +595,9 @@ func formatCarbonWithExample(yearlyGrams *rat.Rat) string {
 	verb := "avoid"
 	if yearlyGrams.LessThan(rat.New(0)) {
 		verb = "emit"
+	}
+	if pluralize {
+		verb += "s"
 	}
 
 	if flightCount < 0.01 && distance < 1 {
@@ -631,22 +638,29 @@ func formatCarbon(gramsC02e *rat.Rat) string {
 	return fmt.Sprintf("%.2f t %s", tonnes, co2Unit)
 }
 
-// formatNumber formats a float with appropriate decimal places.
+// formatNumber formats a float with thousand separators and only as many
+// decimal places as needed to surface the first non-zero decimal digit.
+// Whole numbers render with no decimals at all.
+// See: dashboard/api/src/services/templates/formatHelpers.ts getDecimalPlaces
+// + Humanize.formatNumber.
 func formatNumber(v float64) string {
-	if v >= 100 {
-		return fmt.Sprintf("%.0f", v)
+	places := decimalPlacesNeeded(v)
+	formatted := strconv.FormatFloat(v, 'f', places, 64)
+	return withThousandSeparators(formatted)
+}
+
+func decimalPlacesNeeded(v float64) int {
+	frac := math.Abs(v - math.Trunc(v))
+	if frac == 0 {
+		return 0
 	}
-	if v >= 10 {
-		return fmt.Sprintf("%.1f", v)
+	places := 1
+	scaled := frac * 10
+	for math.Floor(scaled) == 0 && places < 10 {
+		places++
+		scaled *= 10
 	}
-	// Show enough decimals to get at least one non-zero digit
-	for places := 1; places <= 4; places++ {
-		rounded := math.Round(v*math.Pow(10, float64(places))) / math.Pow(10, float64(places))
-		if rounded > 0 {
-			return fmt.Sprintf("%.*f", places, v)
-		}
-	}
-	return fmt.Sprintf("%.2f", v)
+	return places
 }
 
 // currencySymbol returns the symbol for common currency codes, falling back to the code itself.

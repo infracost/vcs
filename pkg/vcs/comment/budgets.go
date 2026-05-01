@@ -2,6 +2,7 @@ package comment
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/infracost/go-proto/pkg/rat"
@@ -101,7 +102,11 @@ func (data *Data) processCostChangesAndBudgets(inputs *Inputs) {
 	// Build tag note.
 	var keys []string
 	for k := range tagKeys {
-		keys = append(keys, escapeAndFormatCode(k))
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for i, k := range keys {
+		keys[i] = escapeAndFormatCode(k)
 	}
 	inputs.BudgetTagNote = fmt.Sprintf(
 		"Note: Tag-based actual costs are calculated using service provider cost data for the current budget period for all resources tagged with %s.",

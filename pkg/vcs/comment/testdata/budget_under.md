@@ -1,4 +1,5 @@
 <h3>💰 Infracost report</h3>
+
 This pull request is aligned with your company's FinOps policies and the Well-Architected Framework.
 <hr/>
 
@@ -40,7 +41,7 @@ This pull request is aligned with your company's FinOps policies and the Well-Ar
         <sub>From Jan 2026 till Dec 2026</sub>
       </td>
       <td align="right" valign="top">$500</td>
-      <td align="right" valign="top"><strong>$1000 (50.0% left)</strong></td>
+      <td align="right" valign="top"><strong>$1,000 (50.0% left)</strong></td>
     </tr>
     <tr>
       <td colspan="3" align="left" valign="middle">Note: Tag-based actual costs are calculated using service provider cost data for the current budget period for all resources tagged with `env`.</td>

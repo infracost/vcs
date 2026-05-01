@@ -14,9 +14,11 @@ import (
 func (data *Data) processFixedIssues(inputs *Inputs, finopsIndex, securityIndex policyFailureIndex, taggingIndex taggingFailureIndex) {
 	counts := make([]FixedIssueCount, 0, len(data.PreviousFinOpsPolicyResults)+len(data.PreviousSecurityPolicyResults)+len(data.TaggingPolicyResults))
 
-	counts = append(counts, finopsFixedIssueCounts(data.PreviousFinOpsPolicyResults, finopsIndex)...)
-	counts = append(counts, finopsFixedIssueCounts(data.PreviousSecurityPolicyResults, securityIndex)...)
-	counts = append(counts, taggingFixedIssueCounts(data.TaggingPolicyResults, taggingIndex)...)
+	deleted := data.buildDeletedResources()
+
+	counts = append(counts, finopsFixedIssueCounts(data.PreviousFinOpsPolicyResults, finopsIndex, deleted)...)
+	counts = append(counts, finopsFixedIssueCounts(data.PreviousSecurityPolicyResults, securityIndex, deleted)...)
+	counts = append(counts, taggingFixedIssueCounts(data.TaggingPolicyResults, taggingIndex, deleted)...)
 
 	// Sort by count descending, then policy name ascending.
 	sort.Slice(counts, func(i, j int) bool {
@@ -44,8 +46,11 @@ func (data *Data) processFixedIssues(inputs *Inputs, finopsIndex, securityIndex 
 }
 
 // finopsFixedIssueCounts computes fixed issue counts for FinOps/security policies.
-// A fixed issue is a resource that was failing previously but is no longer failing.
-func finopsFixedIssueCounts(previousResults []*provider.FinopsPolicyResult, index policyFailureIndex) []FixedIssueCount {
+// A fixed issue is a resource that was failing previously, is no longer failing,
+// and still appears in some current policy result. Resources in the deleted set
+// (gone from every current policy's scope) are excluded so we don't claim a fix
+// for a resource that has disappeared.
+func finopsFixedIssueCounts(previousResults []*provider.FinopsPolicyResult, index policyFailureIndex, deleted map[string]bool) []FixedIssueCount {
 	if len(previousResults) == 0 {
 		return nil
 	}
@@ -59,9 +64,13 @@ func finopsFixedIssueCounts(previousResults []*provider.FinopsPolicyResult, inde
 		currentIDs := index.current[prev.PolicySlug]
 		fixed := 0
 		for _, r := range prev.FailingResources {
-			if currentIDs == nil || !currentIDs[r.Id] {
-				fixed++
+			if currentIDs != nil && currentIDs[r.Id] {
+				continue
 			}
+			if deleted[r.Id] {
+				continue
+			}
+			fixed++
 		}
 
 		if fixed > 0 {
@@ -76,8 +85,10 @@ func finopsFixedIssueCounts(previousResults []*provider.FinopsPolicyResult, inde
 }
 
 // taggingFixedIssueCounts computes fixed issue counts for tagging policies.
-// A fixed issue is an address that was failing previously but is no longer failing.
-func taggingFixedIssueCounts(results []event.TaggingPolicyResult, index taggingFailureIndex) []FixedIssueCount {
+// A fixed issue is an address that was failing previously, is no longer
+// failing, and still appears in some current policy result. Addresses in the
+// deleted set are excluded — see finopsFixedIssueCounts for rationale.
+func taggingFixedIssueCounts(results []event.TaggingPolicyResult, index taggingFailureIndex, deleted map[string]bool) []FixedIssueCount {
 	var counts []FixedIssueCount
 
 	for _, result := range results {
@@ -93,9 +104,13 @@ func taggingFixedIssueCounts(results []event.TaggingPolicyResult, index taggingF
 		currentAddrs := index.current[result.TagPolicyID]
 		fixed := 0
 		for addr := range prevAddrs {
-			if currentAddrs == nil || !currentAddrs[addr] {
-				fixed++
+			if currentAddrs != nil && currentAddrs[addr] {
+				continue
 			}
+			if deleted[addr] {
+				continue
+			}
+			fixed++
 		}
 
 		if fixed > 0 {
