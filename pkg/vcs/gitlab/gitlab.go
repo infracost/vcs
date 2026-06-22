@@ -29,9 +29,9 @@ import (
 const defaultServerURL = "https://gitlab.com"
 
 // maxCommentSize is the GitLab merge-request note body limit, in characters.
-// GitLab caps notes at 1,000,000 characters; we leave a small margin for the
-// markdown tag added at post time.
-const maxCommentSize = 999000
+// comment.Render reserves headroom inside this limit for the markdown
+// tag and truncation imprecision; do not subtract from it here.
+const maxCommentSize = 1000000
 
 // Options configures a GitLab VCS provider.
 type Options struct {

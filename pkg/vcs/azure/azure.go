@@ -26,9 +26,9 @@ import (
 )
 
 // maxCommentSize is the Azure DevOps comment body limit, in characters.
-// Azure caps comments at 150,000 characters; we leave a small margin for
-// the markdown tag.
-const maxCommentSize = 149000
+// comment.Render reserves headroom inside this limit for the markdown
+// tag and truncation imprecision; do not subtract from it here.
+const maxCommentSize = 150000
 
 // patLength is the standard length of an Azure DevOps Personal Access Token.
 // Tokens of this length are sent via HTTP Basic; OAuth bearer tokens otherwise.

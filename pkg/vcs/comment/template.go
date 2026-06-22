@@ -23,6 +23,10 @@ var DefaultTemplate = template.Must(
 	template.New("comment.tmpl").ParseFS(templateFS, "templates/*.tmpl"),
 )
 
+// truncationBuffer is reserved inside maxCommentSize to cover both the
+// markdown tag prepended at post time (~70 chars) and the imprecision of
+// the cost-details truncation pass. Providers pass their platform's raw
+// body limit; this is the single place that pulls back from it.
 const truncationBuffer = 1000
 
 // SourceLinker builds a URL to a specific file and line in a VCS provider's

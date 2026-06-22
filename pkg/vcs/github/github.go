@@ -73,9 +73,9 @@ func New(ctx context.Context, owner, repo, token string, prNumber int32, opts Op
 }
 
 // maxCommentSize is the GitHub PR comment body limit, in characters.
-// The actual API limit is 65536; we leave a small margin for the markdown
-// tag and any whitespace fixups before posting.
-const maxCommentSize = 65000
+// comment.Render reserves headroom inside this limit for the markdown
+// tag and truncation imprecision; do not subtract from it here.
+const maxCommentSize = 65536
 
 // GenerateComment renders a PR comment from the given data.
 func (g *GitHub) GenerateComment(data comment.Data) (string, error) {
