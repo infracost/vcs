@@ -17,10 +17,10 @@ const (
 	GovernanceResourceLimit = 5
 )
 
-func (data *Data) processGovernance(inputs *Inputs, finopsIndex, securityIndex policyFailureIndex, taggingIndex taggingFailureIndex) bool {
-	data.processPolicyResults(inputs, "FinOps policies", data.FinOpsPolicyResults, finopsIndex)
-	data.processPolicyResults(inputs, "Cloud security policies", data.SecurityPolicyResults, securityIndex)
-	data.processTaggingPolicyResults(inputs, taggingIndex)
+func (data *Data) processGovernance(inputs *Inputs, srcLink SourceLinker, finopsIndex, securityIndex policyFailureIndex, taggingIndex taggingFailureIndex) bool {
+	data.processPolicyResults(inputs, "FinOps policies", data.FinOpsPolicyResults, finopsIndex, srcLink)
+	data.processPolicyResults(inputs, "Cloud security policies", data.SecurityPolicyResults, securityIndex, srcLink)
+	data.processTaggingPolicyResults(inputs, taggingIndex, srcLink)
 	data.processGuardrailResults(inputs)
 
 	// Count total issues across non-guardrail tables (matching dashboard behavior).
@@ -47,7 +47,7 @@ func (data *Data) processGovernance(inputs *Inputs, finopsIndex, securityIndex p
 
 // processPolicyResults handles both FinOps and cloud security policy results.
 // They share the same proto type, just with different table titles.
-func (data *Data) processPolicyResults(inputs *Inputs, title string, results []*provider.FinopsPolicyResult, index policyFailureIndex) {
+func (data *Data) processPolicyResults(inputs *Inputs, title string, results []*provider.FinopsPolicyResult, index policyFailureIndex, srcLink SourceLinker) {
 	if len(results) == 0 {
 		return
 	}
@@ -98,7 +98,7 @@ func (data *Data) processPolicyResults(inputs *Inputs, title string, results []*
 			}
 
 			entry.Resources = append(entry.Resources, GovernanceResource{
-				Location:      formatFinopsResourceLocation(data, resource),
+				Location:      formatFinopsResourceLocation(data, srcLink, resource),
 				ProjectIssues: projectIssues,
 			})
 		}
@@ -127,7 +127,7 @@ func (data *Data) processPolicyResults(inputs *Inputs, title string, results []*
 }
 
 // processTaggingPolicyResults converts tagging policy results into a governance table.
-func (data *Data) processTaggingPolicyResults(inputs *Inputs, index taggingFailureIndex) {
+func (data *Data) processTaggingPolicyResults(inputs *Inputs, index taggingFailureIndex, srcLink SourceLinker) {
 	if len(data.TaggingPolicyResults) == 0 {
 		return
 	}
@@ -168,7 +168,7 @@ func (data *Data) processTaggingPolicyResults(inputs *Inputs, index taggingFailu
 			}
 
 			entry.Resources = append(entry.Resources, GovernanceResource{
-				Location: formatTagResourceLocation(data, resource),
+				Location: formatTagResourceLocation(data, srcLink, resource),
 				ProjectIssues: []GovernanceProjectIssues{
 					{
 						Issues:            issues,
@@ -277,7 +277,7 @@ func formatGovernanceSentence(totalIssuesCount int, hasGuardrail bool, isGithubA
 // formatFinopsResourceLocation formats a FinOps failing resource's location with
 // source links when repo URL and commit SHA are available. Matches the tagging
 // equivalent but uses proto fields from FinopsPolicyFailingResource.
-func formatFinopsResourceLocation(data *Data, resource *provider.FinopsPolicyFailingResource) string {
+func formatFinopsResourceLocation(data *Data, srcLink SourceLinker, resource *provider.FinopsPolicyFailingResource) string {
 	address := resource.CauseAddress
 	if address == "" {
 		address = resource.Id
@@ -307,7 +307,7 @@ func formatFinopsResourceLocation(data *Data, resource *provider.FinopsPolicyFai
 			resourceAddress = address
 		}
 
-		moduleLink := generateSourceLink(data.RepoURL, data.CommitSHA, resource.ModuleCallPath, int(resource.ModuleCallStartLine))
+		moduleLink := buildSourceLink(srcLink, data.RepoURL, data.CommitSHA, resource.ModuleCallPath, int(resource.ModuleCallStartLine))
 		return fmt.Sprintf("resource [%s](%s) provisioned by module [%s](%s)",
 			resourceAddress, resourceLink, moduleAddress, moduleLink)
 	}
@@ -317,7 +317,7 @@ func formatFinopsResourceLocation(data *Data, resource *provider.FinopsPolicyFai
 	}
 
 	if data.CommitSHA != "" && data.RepoURL != "" {
-		link := generateSourceLink(data.RepoURL, data.CommitSHA, resource.Path, int(resource.StartLine))
+		link := buildSourceLink(srcLink, data.RepoURL, data.CommitSHA, resource.Path, int(resource.StartLine))
 		return fmt.Sprintf("resource [%s](%s)", address, link)
 	}
 
@@ -331,7 +331,7 @@ func formatFinopsResourceLocation(data *Data, resource *provider.FinopsPolicyFai
 // formatTagResourceLocation formats a tagging resource's location with source links
 // when repo URL and commit SHA are available.
 // See: dashboard/api/src/services/templates/partials/governanceOutputs.ts gcriToLocation (~line 34)
-func formatTagResourceLocation(data *Data, resource event.TagPolicyResultResource) string {
+func formatTagResourceLocation(data *Data, srcLink SourceLinker, resource event.TagPolicyResultResource) string {
 	formattedAddress := escapeAndFormatCode(resource.Address)
 
 	if resource.Path == "" {
@@ -358,7 +358,7 @@ func formatTagResourceLocation(data *Data, resource event.TagPolicyResultResourc
 			resourceAddress = resource.Address
 		}
 
-		moduleLink := generateSourceLink(data.RepoURL, data.CommitSHA, resource.ModuleCallPath, resource.ModuleCallLine)
+		moduleLink := buildSourceLink(srcLink, data.RepoURL, data.CommitSHA, resource.ModuleCallPath, resource.ModuleCallLine)
 		return fmt.Sprintf("resource [%s](%s) provisioned by module [%s](%s)",
 			resourceAddress, resourceLink, moduleAddress, moduleLink)
 	}
@@ -368,7 +368,7 @@ func formatTagResourceLocation(data *Data, resource event.TagPolicyResultResourc
 	}
 
 	if data.CommitSHA != "" && data.RepoURL != "" {
-		link := generateSourceLink(data.RepoURL, data.CommitSHA, resource.Path, resource.Line)
+		link := buildSourceLink(srcLink, data.RepoURL, data.CommitSHA, resource.Path, resource.Line)
 		return fmt.Sprintf("resource [%s](%s)", resource.Address, link)
 	}
 
@@ -379,28 +379,13 @@ func formatTagResourceLocation(data *Data, resource event.TagPolicyResultResourc
 	return fmt.Sprintf("resource %s at %s", formattedAddress, escapeAndFormatCode(changeLine))
 }
 
-// generateSourceLink builds a URL to a specific file and line in a VCS repo.
-// See: dashboard/api/src/services/vcsIntegrations.ts generateSourceLink (~line 198)
-func generateSourceLink(repoURL, commitSHA, path string, startLine int) string {
-	if repoURL == "" || commitSHA == "" || path == "" {
+// buildSourceLink delegates to the provider-supplied SourceLinker, returning
+// the empty string when the linker is nil or any required input is missing.
+func buildSourceLink(srcLink SourceLinker, repoURL, commitSHA, path string, startLine int) string {
+	if srcLink == nil || repoURL == "" || commitSHA == "" || path == "" {
 		return ""
 	}
-
-	cleanURL := strings.TrimSuffix(repoURL, ".git")
-
-	if strings.Contains(cleanURL, "//dev.azure.com/") || strings.Contains(cleanURL, ".visualstudio.com/") {
-		link := fmt.Sprintf("%s?path=%s&version=GC%s", cleanURL, path, commitSHA)
-		if startLine > 0 {
-			link = fmt.Sprintf("%s&line=%d", link, startLine)
-		}
-		return link + "&lineStyle=plain&_a=contents"
-	}
-
-	link := fmt.Sprintf("%s/blob/%s/%s", cleanURL, commitSHA, path)
-	if startLine > 0 {
-		link = fmt.Sprintf("%s#L%d", link, startLine)
-	}
-	return link
+	return srcLink(repoURL, commitSHA, path, startLine)
 }
 
 // formatTagIssues builds the list of issue strings for a single tag policy resource.

@@ -46,4 +46,14 @@ type VCS interface {
 	// PostComment publishes a pre-rendered comment string to the pull
 	// request / merge request using the given behavior.
 	PostComment(ctx context.Context, body string, behavior Behavior) (PostResult, error)
+
+	// MaxCommentSize is the maximum size in characters of a single
+	// comment on this VCS. Used by GenerateComment to truncate the
+	// cost details section before posting.
+	MaxCommentSize() int
+
+	// SourceLink builds a URL to a specific file and line in the
+	// provider's web UI. Returns an empty string when any required
+	// input is missing.
+	SourceLink(repoURL, commitSHA, path string, startLine int) string
 }

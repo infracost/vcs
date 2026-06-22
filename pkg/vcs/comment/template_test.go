@@ -2,8 +2,10 @@ package comment
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,6 +19,20 @@ import (
 )
 
 var update = flag.Bool("update", false, "update golden files")
+
+// githubSourceLink matches the github provider's SourceLink, kept here so the
+// golden files don't have to move when providers are introduced.
+func githubSourceLink(repoURL, commitSHA, path string, startLine int) string {
+	if repoURL == "" || commitSHA == "" || path == "" {
+		return ""
+	}
+	cleanURL := strings.TrimSuffix(repoURL, ".git")
+	link := fmt.Sprintf("%s/blob/%s/%s", cleanURL, commitSHA, path)
+	if startLine > 0 {
+		link = fmt.Sprintf("%s#L%d", link, startLine)
+	}
+	return link
+}
 
 func TestRender(t *testing.T) {
 	tests := []struct {
@@ -890,7 +906,7 @@ func TestRender(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := Render(DefaultTemplate, tt.maxCommentSize, tt.data)
+			got, err := Render(DefaultTemplate, tt.maxCommentSize, githubSourceLink, tt.data)
 			if err != nil {
 				t.Fatalf("Render() error: %v", err)
 			}

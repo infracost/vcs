@@ -25,10 +25,19 @@ var DefaultTemplate = template.Must(
 
 const truncationBuffer = 1000
 
+// SourceLinker builds a URL to a specific file and line in a VCS provider's
+// web UI. Each provider supplies its own implementation matching the URL
+// shape it uses (e.g. GitHub /blob/sha/path, GitLab /-/blob/sha/path,
+// Azure DevOps ?path=&version=GC&line=).
+type SourceLinker func(repoURL, commitSHA, path string, startLine int) string
+
 // Render executes the given template against the provided data and
 // returns the rendered string, truncating cost details if necessary
 // to fit within maxCommentSize.
-func Render(tmpl *template.Template, maxCommentSize int, data Data) (string, error) {
+//
+// srcLink is the VCS provider's source-link generator; it may be nil, in
+// which case file/line links are omitted from the rendered output.
+func Render(tmpl *template.Template, maxCommentSize int, srcLink SourceLinker, data Data) (string, error) {
 	inputs := new(Inputs)
 	data.processProjectErrors(inputs)
 
@@ -36,7 +45,7 @@ func Render(tmpl *template.Template, maxCommentSize int, data Data) (string, err
 	securityIndex := buildPolicyFailureIndex(data.SecurityPolicyResults, data.PreviousSecurityPolicyResults)
 	taggingIndex := buildTaggingFailureIndex(data.TaggingPolicyResults, data.PreviousTaggingPolicyResults)
 
-	hasGuardrail := data.processGovernance(inputs, finopsIndex, securityIndex, taggingIndex)
+	hasGuardrail := data.processGovernance(inputs, srcLink, finopsIndex, securityIndex, taggingIndex)
 	data.processFixedIssues(inputs, finopsIndex, securityIndex, taggingIndex)
 	data.processCostChangesAndBudgets(inputs)
 	data.processDisplayCosts(inputs, hasGuardrail)
