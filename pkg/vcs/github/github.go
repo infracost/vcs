@@ -72,9 +72,31 @@ func New(ctx context.Context, owner, repo, token string, prNumber int32, opts Op
 	}, nil
 }
 
+// maxCommentSize is the GitHub PR comment body limit, in characters.
+// comment.Render reserves headroom inside this limit for the markdown
+// tag and truncation imprecision; do not subtract from it here.
+const maxCommentSize = 65536
+
 // GenerateComment renders a PR comment from the given data.
 func (g *GitHub) GenerateComment(data comment.Data) (string, error) {
-	return comment.Render(g.tmpl, 65000, data)
+	return comment.Render(g.tmpl, g.MaxCommentSize(), g.SourceLink, data)
+}
+
+// MaxCommentSize returns the GitHub PR comment body size limit in characters.
+func (g *GitHub) MaxCommentSize() int { return maxCommentSize }
+
+// SourceLink returns a URL to a file/line on github.com (or GitHub
+// Enterprise) following the /blob/<sha>/<path>#L<line> shape.
+func (g *GitHub) SourceLink(repoURL, commitSHA, path string, startLine int) string {
+	if repoURL == "" || commitSHA == "" || path == "" {
+		return ""
+	}
+	cleanURL := strings.TrimSuffix(repoURL, ".git")
+	link := fmt.Sprintf("%s/blob/%s/%s", cleanURL, commitSHA, path)
+	if startLine > 0 {
+		link = fmt.Sprintf("%s#L%d", link, startLine)
+	}
+	return link
 }
 
 // PostComment publishes a comment to the pull request using the given behavior.

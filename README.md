@@ -1,16 +1,38 @@
 # vcs
 
-Go library for posting Infracost cost estimate comments to pull requests. Supports GitHub (including Enterprise), with a provider interface for adding GitLab, Bitbucket, Azure Repos, etc.
+Go library for posting Infracost cost estimate comments to pull requests. Supports GitHub (including Enterprise), GitLab (including self-managed), and Azure DevOps Repos. The same `vcs.VCS` interface is used for all providers, so callers can swap implementations without touching their data-building code.
 
 ## Usage
 
 ### 1. Create a provider
+
+#### GitHub
 
 ```go
 gh, err := github.New(ctx, "my-org", "my-repo", token, prNumber, github.Options{})
 ```
 
 For GitHub Enterprise, set `Options.APIURL` to your instance URL. You can also provide a custom `Options.TLSConfig` for Enterprise TLS requirements.
+
+#### GitLab
+
+```go
+gl, err := gitlab.New(ctx, "my-group/my-repo", token, mrNumber, gitlab.Options{})
+```
+
+For self-managed GitLab, set `Options.ServerURL` to your instance URL. The project path uses `group/subgroup/repo` form (matching GitLab's full path).
+
+GitLab has no equivalent of GitHub's comment-minimize API, so `BehaviorHideAndNew` falls back to delete-and-new.
+
+#### Azure DevOps
+
+```go
+az, err := azure.New(ctx, "https://dev.azure.com/my-org/my-project/_git/my-repo", token, prNumber, azure.Options{})
+```
+
+Tokens are auto-detected: a 52-char token is sent as a Personal Access Token (HTTP Basic); anything else is sent as a Bearer token. Threads open in the "closed" status by default — set `Options.InitAsActive` to open them as "active" instead.
+
+Like GitLab, Azure DevOps doesn't expose a minimize API, so `BehaviorHideAndNew` falls back to delete-and-new.
 
 ### 2. Build the comment data
 
@@ -123,5 +145,9 @@ Any VCS provider implements:
 type VCS interface {
     GenerateComment(comment.Data) (string, error)
     PostComment(ctx context.Context, body string, behavior Behavior) (PostResult, error)
+    MaxCommentSize() int
+    SourceLink(repoURL, commitSHA, path string, startLine int) string
 }
 ```
+
+`MaxCommentSize` reports the platform's body limit in characters — `GenerateComment` uses it to truncate the cost details section before posting. `SourceLink` builds a clickable web-UI URL for a specific file and line, following the provider's own URL shape (GitHub `/blob/<sha>/<path>#L<line>`, GitLab `/-/blob/<sha>/<path>#L<line>`, Azure `?path=&version=GC<sha>&line=`).
