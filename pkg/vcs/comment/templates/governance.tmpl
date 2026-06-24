@@ -48,7 +48,7 @@ in {{ .ProjectNamesLabel }}
   {{ range .Entries -}}
 {{- template "governanceEntry" . }}
   {{ end -}}
-  {{ if .Truncated -}}
+  {{ if and .Truncated .CloudURL -}}
   <tr><td colspan="2">... view <a href="{{ .CloudURL }}">all issues</a> in Infracost Cloud</td></tr>
   {{ end -}}
 </table>

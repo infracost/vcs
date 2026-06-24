@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/infracost/go-proto/pkg/rat"
 )
@@ -102,7 +103,7 @@ func (data *Data) calculateMetadataHeaders(inputs *Inputs) {
 // See: dashboard/api/src/services/templates/partials/usageCostMessageText.ts
 func (data *Data) usageCostsMessage() string {
 	cloudSettingsStr := "Infracost Cloud settings"
-	if data.OrgSlug != "" {
+	if data.CloudEnabled && data.OrgSlug != "" {
 		cloudSettingsStr = fmt.Sprintf("[Infracost Cloud settings](https://dashboard.infracost.io/org/%s/settings)", data.OrgSlug)
 	}
 	usageDocsStr := "[docs](https://www.infracost.io/docs/features/usage_based_resources/#infracost-usageyml)"
@@ -262,14 +263,17 @@ func isNilOrZero(r *rat.Rat) bool {
 	return r == nil || r.IsZero()
 }
 
-// truncateMiddle truncates a string to maxLen, replacing the middle with "...".
+// truncateMiddle truncates a string to maxLen characters (runes), replacing
+// the middle with "...". Cut points fall on rune boundaries so the result is
+// always valid UTF-8.
 func truncateMiddle(s string, maxLen int) string {
-	if len(s) <= maxLen {
+	if utf8.RuneCountInString(s) <= maxLen {
 		return s
 	}
+	runes := []rune(s)
 	if maxLen <= 3 {
-		return s[:maxLen]
+		return string(runes[:maxLen])
 	}
 	half := (maxLen - 3) / 2
-	return s[:half] + "..." + s[len(s)-half:]
+	return string(runes[:half]) + "..." + string(runes[len(runes)-half:])
 }

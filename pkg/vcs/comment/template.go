@@ -6,12 +6,35 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+	"unicode/utf8"
 )
 
 const (
 	MaxErrorsPerProject   = 3
 	MaxProjectsWithErrors = 3
 )
+
+// SizeUnit indicates how a provider measures its comment body size limit.
+// Providers differ: GitHub and Azure DevOps cap on the number of characters
+// (Unicode code points), while GitLab caps on bytes (~1 MB).
+type SizeUnit int
+
+const (
+	// SizeUnitBytes measures the comment body in bytes (e.g. GitLab's ~1 MB limit).
+	SizeUnitBytes SizeUnit = iota
+
+	// SizeUnitRunes measures the comment body in Unicode code points, matching
+	// GitHub's and Azure DevOps's "N characters" limits.
+	SizeUnitRunes
+)
+
+// measureLen returns the length of s in the given unit.
+func measureLen(s string, unit SizeUnit) int {
+	if unit == SizeUnitRunes {
+		return utf8.RuneCountInString(s)
+	}
+	return len(s)
+}
 
 //go:embed templates
 var templateFS embed.FS
@@ -41,7 +64,7 @@ type SourceLinker func(repoURL, commitSHA, path string, startLine int) string
 //
 // srcLink is the VCS provider's source-link generator; it may be nil, in
 // which case file/line links are omitted from the rendered output.
-func Render(tmpl *template.Template, maxCommentSize int, srcLink SourceLinker, data Data) (string, error) {
+func Render(tmpl *template.Template, maxCommentSize int, unit SizeUnit, srcLink SourceLinker, data Data) (string, error) {
 	inputs := new(Inputs)
 	data.processProjectErrors(inputs)
 
@@ -59,13 +82,13 @@ func Render(tmpl *template.Template, maxCommentSize int, srcLink SourceLinker, d
 		data.processPreexistingIssues(inputs)
 	}
 
-	return renderWithTruncation(tmpl, inputs, maxCommentSize)
+	return renderWithTruncation(tmpl, inputs, maxCommentSize, unit)
 }
 
 // renderWithTruncation renders the template, truncating CostDetails if the
 // output exceeds maxSize.
 // See: dashboard/api/src/services/templates/helpers.ts renderTemplateAndTruncateIfNecessary
-func renderWithTruncation(tmpl *template.Template, inputs *Inputs, maxSize int) (string, error) {
+func renderWithTruncation(tmpl *template.Template, inputs *Inputs, maxSize int, unit SizeUnit) (string, error) {
 	maxLen := maxSize - truncationBuffer
 
 	// First pass: render without cost details to measure the base size.
@@ -77,15 +100,15 @@ func renderWithTruncation(tmpl *template.Template, inputs *Inputs, maxSize int) 
 		return "", err
 	}
 
-	maxAvailable := maxLen - baseBuf.Len()
+	maxAvailable := maxLen - measureLen(baseBuf.String(), unit)
 	if maxAvailable < 0 {
 		maxAvailable = 0
 	}
 
-	if len(fullCostDetails) <= maxAvailable {
+	if measureLen(fullCostDetails, unit) <= maxAvailable {
 		inputs.CostDetails = fullCostDetails
 	} else {
-		inputs.CostDetails = truncateMiddleStr(fullCostDetails, maxAvailable)
+		inputs.CostDetails = truncateMiddleStr(fullCostDetails, maxAvailable, unit)
 	}
 
 	var buf bytes.Buffer
@@ -95,20 +118,68 @@ func renderWithTruncation(tmpl *template.Template, inputs *Inputs, maxSize int) 
 	return buf.String(), nil
 }
 
-// truncateMiddleStr keeps the start and end of s, replacing the middle
-// with "..." to fit within maxLen. Matches the dashboard's truncateMiddle.
-func truncateMiddleStr(s string, maxLen int) string {
-	if len(s) <= maxLen {
+// truncateMiddleStr keeps the start and end of s, replacing the middle with
+// "..." so the result fits within maxLen measured in the given unit. Cut points
+// are always snapped to rune boundaries so the result is valid UTF-8. Matches
+// the dashboard's truncateMiddle.
+func truncateMiddleStr(s string, maxLen int, unit SizeUnit) string {
+	if measureLen(s, unit) <= maxLen {
 		return s
 	}
-	sep := "..."
-	charsToShow := maxLen - len(sep)
-	if charsToShow <= 0 {
-		return sep
+	const sep = "..." // ASCII: 3 in both bytes and runes
+	if maxLen <= len(sep) {
+		if maxLen <= 0 {
+			return ""
+		}
+		return sep[:maxLen]
 	}
-	startChars := (charsToShow + 1) / 2 // ceil
-	backChars := charsToShow / 2        // floor
-	return s[:startChars] + sep + s[len(s)-backChars:]
+	budget := maxLen - len(sep)
+	front := (budget + 1) / 2 // ceil
+	back := budget / 2        // floor
+	return prefixWithin(s, front, unit) + sep + suffixWithin(s, back, unit)
+}
+
+// runeSize returns the length of r in the given unit.
+func runeSize(r rune, unit SizeUnit) int {
+	if unit == SizeUnitBytes {
+		return utf8.RuneLen(r)
+	}
+	return 1
+}
+
+// prefixWithin returns the longest prefix of s, ending on a rune boundary,
+// whose length in unit is <= budget.
+func prefixWithin(s string, budget int, unit SizeUnit) string {
+	if budget <= 0 {
+		return ""
+	}
+	count := 0
+	for i, r := range s {
+		size := runeSize(r, unit)
+		if count+size > budget {
+			return s[:i]
+		}
+		count += size
+	}
+	return s
+}
+
+// suffixWithin returns the longest suffix of s, starting on a rune boundary,
+// whose length in unit is <= budget.
+func suffixWithin(s string, budget int, unit SizeUnit) string {
+	if budget <= 0 {
+		return ""
+	}
+	runes := []rune(s)
+	count := 0
+	for i := len(runes) - 1; i >= 0; i-- {
+		size := runeSize(runes[i], unit)
+		if count+size > budget {
+			return string(runes[i+1:])
+		}
+		count += size
+	}
+	return s
 }
 
 // processDisplayCosts determines whether the cost section should be shown and
@@ -207,7 +278,7 @@ func formatCostDetailsMsg(hasUnsupported, hasError bool) string {
 // counting total failed issues on the base branch and subtracting fixed issues.
 // See: dashboard/api/src/services/templates/partials/preexistingIssuesSentenceText.ts
 func (data *Data) processPreexistingIssues(inputs *Inputs) {
-	if data.BaseBranchName == "" || data.OrgSlug == "" || data.RepoID == "" {
+	if !data.CloudEnabled || data.BaseBranchName == "" || data.OrgSlug == "" || data.RepoID == "" {
 		return
 	}
 
@@ -257,6 +328,19 @@ func (data *Data) processPreexistingIssues(inputs *Inputs) {
 	inputs.PreexistingIssuesSentence = fmt.Sprintf(
 		"There %s(%s) in the `%s` branch. Fix some to climb your [org's leaderboard](%s) 🥇",
 		issueStr, repoURL, data.BaseBranchName, dashboardURL,
+	)
+}
+
+// runURL returns the Infracost Cloud link to this run's dashboard page, or an
+// empty string when cloud is disabled or any required identifier is missing.
+// Callers should not render a dashboard link when this returns "".
+func (data *Data) runURL() string {
+	if !data.CloudEnabled || data.OrgSlug == "" || data.RepoID == "" || data.RunID == "" {
+		return ""
+	}
+	return fmt.Sprintf(
+		"https://dashboard.infracost.io/org/%s/repos/%s/runs/%s",
+		data.OrgSlug, data.RepoID, data.RunID,
 	)
 }
 
@@ -325,8 +409,13 @@ type Inputs struct {
 	FixedIssuesSentence string
 
 	// FixedIssueCounts lists per-policy counts of fixed issues, sorted by
-	// count descending then policy name ascending.
+	// count descending then policy name ascending. Capped at FixedIssueLimit.
 	FixedIssueCounts []FixedIssueCount
+
+	// FixedIssuesTruncated is the number of fixed issues belonging to policies
+	// beyond FixedIssueLimit. When non-zero, the fixed-issues section shows an
+	// "...and N more issues" line. Zero when nothing was truncated.
+	FixedIssuesTruncated int
 
 	// PreexistingIssuesSentence is a message about pre-existing issues in
 	// the base branch, e.g. 'There are also [5 pre-existing issues](url)
@@ -445,10 +534,11 @@ type GovernanceTable struct {
 	Entries []GovernanceEntry
 
 	// Truncated is true when some entries were omitted from this table.
-	// When true, a "view all issues" link is rendered using CloudURL.
+	// When true and CloudURL is non-empty, a "view all issues" link is rendered.
 	Truncated bool
 
-	// CloudURL is the Infracost Cloud link for viewing all issues.
+	// CloudURL is the Infracost Cloud link for viewing all issues. It is empty
+	// when cloud is disabled, in which case no dashboard link is rendered.
 	CloudURL string
 }
 

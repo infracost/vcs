@@ -47,10 +47,11 @@ type VCS interface {
 	// request / merge request using the given behavior.
 	PostComment(ctx context.Context, body string, behavior Behavior) (PostResult, error)
 
-	// MaxCommentSize is the maximum size in characters of a single
-	// comment on this VCS. Used by GenerateComment to truncate the
-	// cost details section before posting.
-	MaxCommentSize() int
+	// MaxCommentSize returns the maximum size of a single comment on this
+	// VCS together with the unit that size is measured in: runes (Unicode
+	// code points) for GitHub and Azure DevOps, bytes for GitLab. Used by
+	// GenerateComment to truncate the cost details section before posting.
+	MaxCommentSize() (int, comment.SizeUnit)
 
 	// SourceLink builds a URL to a specific file and line in the
 	// provider's web UI. Returns an empty string when any required

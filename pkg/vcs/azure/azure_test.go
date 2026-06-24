@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/infracost/vcs/pkg/vcs"
+	"github.com/infracost/vcs/pkg/vcs/comment"
 )
 
 // compile-time check that Azure implements vcs.VCS.
@@ -107,7 +108,11 @@ func TestBuildAPIURL(t *testing.T) {
 
 func TestMaxCommentSize(t *testing.T) {
 	a := &Azure{}
-	if a.MaxCommentSize() != maxCommentSize {
-		t.Errorf("MaxCommentSize() = %d, want %d", a.MaxCommentSize(), maxCommentSize)
+	size, unit := a.MaxCommentSize()
+	if size != maxCommentSize {
+		t.Errorf("MaxCommentSize() size = %d, want %d", size, maxCommentSize)
+	}
+	if unit != comment.SizeUnitRunes {
+		t.Errorf("MaxCommentSize() unit = %d, want SizeUnitRunes", unit)
 	}
 }

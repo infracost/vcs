@@ -20,6 +20,7 @@ Graviton instances are more energy efficient.
   * Switch to Graviton instance type
     * 💰 save $600/year
     * 🌱 avoid 2.40 t CO₂e - that's more than 16 flights between London & Paris
+    * 🔧 [Fix in your IDE](https://cost.dev/?utm_source=pr_comment&utm_content=fix_in_ide) — or ask your agent to apply it with Infracost Dev
     </td></tr>
 
   </table>
@@ -79,6 +80,12 @@ Key: * usage cost, ~ changed, + added, - removed
 </details>
 
 <hr/>
+
+<hr/>
+
+![Infracost Dev](https://img.shields.io/badge/Infracost-Dev-db2777?labelColor=000) **Let your coding agent remediate these.** Infracost Dev gives Cursor, Claude Code and Copilot your FinOps policies and live cloud pricing — so the next PR ships clean.
+
+[cost.dev](https://cost.dev/?utm_source=pr_comment&utm_content=infracost_dev_promo) · [Setup guide](https://www.infracost.io/docs/?utm_source=pr_comment&utm_content=infracost_dev_promo)
 
 <sub>
   This comment will be updated when code changes.

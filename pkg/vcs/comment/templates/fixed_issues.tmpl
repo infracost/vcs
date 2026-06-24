@@ -4,5 +4,8 @@
 {{ range .FixedIssueCounts -}}
 - {{ .PolicyName }} `{{ .FixedIssuesLabel }}`
 {{ end -}}
+{{ if .FixedIssuesTruncated -}}
+- ...and {{ .FixedIssuesTruncated }} more {{ if eq .FixedIssuesTruncated 1 }}issue{{ else }}issues{{ end }}
+{{ end -}}
 </details>
 {{- end }}

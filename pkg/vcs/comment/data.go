@@ -25,10 +25,10 @@ type Data struct {
 	// Available from runner's RunMetadata.UsageAPIEnabled.
 	UsageAPIEnabled bool
 
-	// IsGithubApp should be true when the repository is Github and the Github app (eg. the runner) is installed
+	// SupportsBotCommands should be true when the repository is Github and the Github app (eg. the runner) is installed
 	// for this repository. It makes the comment include suggestions about using @infracost help which only works
 	// with the app in Github.
-	IsGithubApp bool
+	SupportsBotCommands bool
 
 	// OrgSlug is the organization slug, used to build links to Infracost Cloud settings.
 	OrgSlug string
@@ -58,8 +58,11 @@ type Data struct {
 	// the runner's Root.DiffTotalMonthlyCarbonGramsCo2e.
 	DiffTotalMonthlyCarbonGramsCo2e *rat.Rat
 
-	// CloudURL is the link back to the Infracost Cloud dashboard for this run.
-	CloudURL string
+	// RunID is the ID of the run in the infracost dashboard, if available
+	RunID string
+
+	// Whether the cloud is enabled for the upload of results
+	CloudEnabled bool
 
 	// RepoURL is the VCS repository URL (e.g. "https://github.com/org/repo"),
 	// used to construct source links in governance tables.

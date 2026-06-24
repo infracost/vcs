@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/infracost/vcs/pkg/vcs"
+	"github.com/infracost/vcs/pkg/vcs/comment"
 )
 
 // compile-time check that GitLab implements vcs.VCS.
@@ -81,7 +82,11 @@ func TestSourceLink(t *testing.T) {
 
 func TestMaxCommentSize(t *testing.T) {
 	g := &GitLab{}
-	if g.MaxCommentSize() != maxCommentSize {
-		t.Errorf("MaxCommentSize() = %d, want %d", g.MaxCommentSize(), maxCommentSize)
+	size, unit := g.MaxCommentSize()
+	if size != maxCommentSize {
+		t.Errorf("MaxCommentSize() size = %d, want %d", size, maxCommentSize)
+	}
+	if unit != comment.SizeUnitBytes {
+		t.Errorf("MaxCommentSize() unit = %d, want SizeUnitBytes", unit)
 	}
 }

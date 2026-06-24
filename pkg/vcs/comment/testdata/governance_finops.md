@@ -18,10 +18,17 @@ Consider using reserved instances for long-running workloads.
 
 resource [aws_instance.web](https://github.com/my-org/my-repo/blob/def456/main.tf#L15)
   * This instance runs 24/7 and could benefit from a reserved instance
+    * 🔧 [Fix in your IDE](https://cost.dev/?utm_source=pr_comment&utm_content=fix_in_ide) — or ask your agent to apply it with Infracost Dev
     in project `my-project`
     </td></tr>
 
   </table>
+
+<hr/>
+
+![Infracost Dev](https://img.shields.io/badge/Infracost-Dev-db2777?labelColor=000) **Let your coding agent remediate these.** Infracost Dev gives Cursor, Claude Code and Copilot your FinOps policies and live cloud pricing — so the next PR ships clean.
+
+[cost.dev](https://cost.dev/?utm_source=pr_comment&utm_content=infracost_dev_promo) · [Setup guide](https://www.infracost.io/docs/?utm_source=pr_comment&utm_content=infracost_dev_promo)
 
 <sub>
   This comment will be updated when code changes.
