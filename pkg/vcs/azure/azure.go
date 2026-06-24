@@ -232,12 +232,12 @@ func (a *Azure) findMatchingComments(ctx context.Context) ([]azureComment, error
 
 	res, err := a.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("getting comments: %w", err)
+		return nil, vcs.RetryablePostError(fmt.Errorf("getting comments: %w", err))
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("getting comments: %s", res.Status)
+		return nil, vcs.HTTPPostError(res.StatusCode, res.Header, fmt.Errorf("getting comments: %s", res.Status))
 	}
 
 	resBody, err := io.ReadAll(res.Body)
@@ -314,13 +314,13 @@ func (a *Azure) callCreateComment(ctx context.Context, body string) (azureCommen
 
 	res, err := a.httpClient.Do(req)
 	if err != nil {
-		return azureComment{}, fmt.Errorf("creating comment: %w", err)
+		return azureComment{}, vcs.RetryablePostError(fmt.Errorf("creating comment: %w", err))
 	}
 	defer func() { _ = res.Body.Close() }()
 
-	if res.StatusCode != http.StatusOK {
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		resBody, _ := io.ReadAll(res.Body)
-		return azureComment{}, fmt.Errorf("creating comment: %s\n%s", res.Status, string(resBody))
+		return azureComment{}, vcs.HTTPPostError(res.StatusCode, res.Header, fmt.Errorf("creating comment: %s\n%s", res.Status, string(resBody)))
 	}
 
 	resBody, err := io.ReadAll(res.Body)
@@ -367,12 +367,12 @@ func (a *Azure) callUpdateComment(ctx context.Context, c azureComment, body stri
 
 	res, err := a.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("updating comment: %w", err)
+		return vcs.RetryablePostError(fmt.Errorf("updating comment: %w", err))
 	}
 	defer func() { _ = res.Body.Close() }()
 
-	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("updating comment: %s", res.Status)
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return vcs.HTTPPostError(res.StatusCode, res.Header, fmt.Errorf("updating comment: %s", res.Status))
 	}
 	return nil
 }
@@ -387,12 +387,12 @@ func (a *Azure) callDeleteComment(ctx context.Context, c azureComment) error {
 
 	res, err := a.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("deleting comment: %w", err)
+		return vcs.RetryablePostError(fmt.Errorf("deleting comment: %w", err))
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode >= 300 {
-		return fmt.Errorf("deleting comment: %s", res.Status)
+		return vcs.HTTPPostError(res.StatusCode, res.Header, fmt.Errorf("deleting comment: %s", res.Status))
 	}
 	return nil
 }
