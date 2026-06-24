@@ -35,6 +35,7 @@ type Options struct {
 // GitHub implements vcs.VCS for GitHub pull requests using the GraphQL API.
 type GitHub struct {
 	client   *githubv4.Client
+	recorder *vcs.StatusRecorder
 	owner    string
 	repo     string
 	prNumber int32
@@ -47,7 +48,7 @@ type GitHub struct {
 
 // New creates a new GitHub VCS provider for the given repository and pull request.
 func New(ctx context.Context, owner, repo, token string, prNumber int32, opts Options) (*GitHub, error) {
-	client, err := newClient(ctx, token, opts.APIURL, opts.TLSConfig)
+	client, recorder, err := newClient(ctx, token, opts.APIURL, opts.TLSConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -64,6 +65,7 @@ func New(ctx context.Context, owner, repo, token string, prNumber int32, opts Op
 
 	return &GitHub{
 		client:   client,
+		recorder: recorder,
 		owner:    owner,
 		repo:     repo,
 		prNumber: prNumber,
@@ -251,7 +253,7 @@ func (g *GitHub) findMatchingComments(ctx context.Context) ([]githubComment, err
 	var matching []githubComment
 	for {
 		if err := g.client.Query(ctx, &q, variables); err != nil {
-			return nil, err
+			return nil, g.recorder.WrapError(err)
 		}
 		for _, node := range q.Repository.PullRequest.Comments.Nodes {
 			body := string(node.Body)
@@ -299,7 +301,7 @@ func (g *GitHub) getPRNodeID(ctx context.Context) (string, error) {
 	}
 
 	if err := g.client.Query(ctx, &q, variables); err != nil {
-		return "", fmt.Errorf("fetching PR node ID: %w", err)
+		return "", g.recorder.WrapError(fmt.Errorf("fetching PR node ID: %w", err))
 	}
 
 	g.prNodeID = string(q.Repository.PullRequest.ID)
@@ -321,7 +323,7 @@ func (g *GitHub) callCreateComment(ctx context.Context, body string) error {
 		SubjectID: githubv4.ID(prNodeID),
 		Body:      githubv4.String(body),
 	}
-	return g.client.Mutate(ctx, &m, input, nil)
+	return g.recorder.WrapError(g.client.Mutate(ctx, &m, input, nil))
 }
 
 func (g *GitHub) callUpdateComment(ctx context.Context, c githubComment, body string) error {
@@ -334,7 +336,7 @@ func (g *GitHub) callUpdateComment(ctx context.Context, c githubComment, body st
 		ID:   githubv4.NewString(githubv4.String(c.globalID)),
 		Body: githubv4.String(body),
 	}
-	return g.client.Mutate(ctx, &m, input, nil)
+	return g.recorder.WrapError(g.client.Mutate(ctx, &m, input, nil))
 }
 
 func (g *GitHub) callDeleteComment(ctx context.Context, c githubComment) error {
@@ -346,7 +348,7 @@ func (g *GitHub) callDeleteComment(ctx context.Context, c githubComment) error {
 	input := githubv4.DeleteIssueCommentInput{
 		ID: githubv4.NewString(githubv4.String(c.globalID)),
 	}
-	return g.client.Mutate(ctx, &m, input, nil)
+	return g.recorder.WrapError(g.client.Mutate(ctx, &m, input, nil))
 }
 
 func (g *GitHub) callHideComment(ctx context.Context, c githubComment) error {
@@ -359,25 +361,28 @@ func (g *GitHub) callHideComment(ctx context.Context, c githubComment) error {
 		SubjectID:  githubv4.NewString(githubv4.String(c.globalID)),
 		Classifier: githubv4.ReportedContentClassifiersOutdated,
 	}
-	return g.client.Mutate(ctx, &m, input, nil)
+	return g.recorder.WrapError(g.client.Mutate(ctx, &m, input, nil))
 }
 
-// newClient creates a GitHub GraphQL client.
-func newClient(ctx context.Context, token, apiURL string, tlsConfig *tls.Config) (*githubv4.Client, error) {
+// newClient creates a GitHub GraphQL client. It returns a StatusRecorder
+// wrapping the client's transport so PostComment can recover the HTTP status
+// code of a failed request, which the GraphQL client otherwise hides.
+func newClient(ctx context.Context, token, apiURL string, tlsConfig *tls.Config) (*githubv4.Client, *vcs.StatusRecorder, error) {
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.TLSClientConfig = tlsConfig
-	httpClient := &http.Client{Transport: transport}
+	recorder := &vcs.StatusRecorder{Base: transport}
+	httpClient := &http.Client{Transport: recorder}
 	httpCtx := context.WithValue(ctx, oauth2.HTTPClient, httpClient)
 	tc := oauth2.NewClient(httpCtx, ts)
 
 	// Standard GitHub.com
 	if apiURL == "" || apiURL == "https://api.github.com" {
-		return githubv4.NewClient(tc), nil
+		return githubv4.NewClient(tc), recorder, nil
 	}
 
 	// GitHub Enterprise — append /api/graphql to the base URL.
 	graphqlURL := strings.TrimRight(apiURL, "/") + "/api/graphql"
-	return githubv4.NewEnterpriseClient(graphqlURL, tc), nil
+	return githubv4.NewEnterpriseClient(graphqlURL, tc), recorder, nil
 }

@@ -55,6 +55,7 @@ type Options struct {
 type GitLab struct {
 	httpClient    *http.Client
 	graphqlClient *graphql.Client
+	recorder      *vcs.StatusRecorder
 	serverURL     string
 	project       string
 	mrNumber      int
@@ -70,7 +71,7 @@ func New(ctx context.Context, project, token string, mrNumber int, opts Options)
 		serverURL = defaultServerURL
 	}
 
-	httpClient, gqlClient, err := newClients(ctx, token, serverURL, opts.TLSConfig)
+	httpClient, gqlClient, recorder, err := newClients(ctx, token, serverURL, opts.TLSConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -88,6 +89,7 @@ func New(ctx context.Context, project, token string, mrNumber int, opts Options)
 	return &GitLab{
 		httpClient:    httpClient,
 		graphqlClient: gqlClient,
+		recorder:      recorder,
 		serverURL:     serverURL,
 		project:       project,
 		mrNumber:      mrNumber,
@@ -239,7 +241,7 @@ func (g *GitLab) findMatchingComments(ctx context.Context) ([]gitlabComment, err
 	var matching []gitlabComment
 	for {
 		if err := g.graphqlClient.Query(ctx, &q, variables); err != nil {
-			return nil, err
+			return nil, g.recorder.WrapError(err)
 		}
 		for _, node := range q.Project.MergeRequest.Notes.Nodes {
 			body := string(node.Body)
@@ -279,12 +281,12 @@ func (g *GitLab) callCreateComment(ctx context.Context, body string) (gitlabComm
 
 	res, err := g.httpClient.Do(req)
 	if err != nil {
-		return gitlabComment{}, fmt.Errorf("creating comment: %w", err)
+		return gitlabComment{}, vcs.RetryablePostError(fmt.Errorf("creating comment: %w", err))
 	}
 	defer func() { _ = res.Body.Close() }()
 
-	if res.StatusCode != http.StatusCreated {
-		return gitlabComment{}, fmt.Errorf("creating comment: %s", res.Status)
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return gitlabComment{}, vcs.HTTPPostError(res.StatusCode, res.Header, fmt.Errorf("creating comment: %s", res.Status))
 	}
 
 	resBody, err := io.ReadAll(res.Body)
@@ -328,7 +330,7 @@ func (g *GitLab) callUpdateComment(ctx context.Context, c gitlabComment, body st
 		},
 	}
 
-	return g.graphqlClient.Mutate(ctx, &m, variables)
+	return g.recorder.WrapError(g.graphqlClient.Mutate(ctx, &m, variables))
 }
 
 func (g *GitLab) callDeleteComment(ctx context.Context, c gitlabComment) error {
@@ -346,28 +348,29 @@ func (g *GitLab) callDeleteComment(ctx context.Context, c gitlabComment) error {
 		"input": destroyNoteInput{ID: graphql.String(c.id)},
 	}
 
-	return g.graphqlClient.Mutate(ctx, &m, variables)
+	return g.recorder.WrapError(g.graphqlClient.Mutate(ctx, &m, variables))
 }
 
 // newClients builds an authenticated HTTP client and a GraphQL client pointed at
 // the GitLab GraphQL endpoint for the given server.
-func newClients(ctx context.Context, token, serverURL string, tlsConfig *tls.Config) (*http.Client, *graphql.Client, error) {
+func newClients(ctx context.Context, token, serverURL string, tlsConfig *tls.Config) (*http.Client, *graphql.Client, *vcs.StatusRecorder, error) {
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.TLSClientConfig = tlsConfig
-	rawClient := &http.Client{Transport: transport}
+	recorder := &vcs.StatusRecorder{Base: transport}
+	rawClient := &http.Client{Transport: recorder}
 	httpCtx := context.WithValue(ctx, oauth2.HTTPClient, rawClient)
 
 	httpClient := oauth2.NewClient(httpCtx, ts)
 
 	u, err := url.Parse(serverURL)
 	if err != nil {
-		return nil, nil, fmt.Errorf("parsing server URL: %w", err)
+		return nil, nil, nil, fmt.Errorf("parsing server URL: %w", err)
 	}
 	if !strings.HasSuffix(u.Path, "/") {
 		u.Path += "/"
 	}
 
-	return httpClient, graphql.NewClient(fmt.Sprintf("%sapi/graphql", u.String()), httpClient), nil
+	return httpClient, graphql.NewClient(fmt.Sprintf("%sapi/graphql", u.String()), httpClient), recorder, nil
 }
