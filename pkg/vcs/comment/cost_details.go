@@ -622,7 +622,7 @@ func formatQuantity(d *rat.Rat) string {
 		s = strings.TrimRight(s, "0")
 		s = strings.TrimRight(s, ".")
 	}
-	return s
+	return withThousandSeparators(s)
 }
 
 func indent(text, prefix string) string {

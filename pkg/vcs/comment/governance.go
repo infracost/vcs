@@ -160,7 +160,7 @@ func (data *Data) processTaggingPolicyResults(inputs *Inputs, index taggingFailu
 				continue
 			}
 
-			issues := formatTagIssues(resource)
+			issues := data.formatTagIssues(srcLink, resource)
 			totalIssues += len(issues)
 
 			if len(entry.Resources) >= GovernanceResourceLimit {
@@ -389,40 +389,213 @@ func buildSourceLink(srcLink SourceLinker, repoURL, commitSHA, path string, star
 }
 
 // formatTagIssues builds the list of issue strings for a single tag policy resource.
-func formatTagIssues(resource event.TagPolicyResultResource) []string {
-	var issues []string
+// See: dashboard/api/src/services/tagPolicies/index.ts createIssuesFromTagPolicyResultResource (~line 2562)
+func (data *Data) formatTagIssues(srcLink SourceLinker, resource event.TagPolicyResultResource) []string {
+	defaultTagsMarkdown := data.defaultTagsMarkdown(srcLink, resource)
+	extra := defaultTagsExtra(resource, defaultTagsMarkdown)
 
-	for _, tag := range resource.MissingMandatoryTags {
-		issues = append(issues, fmt.Sprintf("Missing mandatory tag `%s`", tag))
-	}
+	var issues []string
 
 	for _, tag := range resource.InvalidTags {
 		if tag.MissingMandatory {
-			if tag.Suggestion != "" {
-				issues = append(issues, fmt.Sprintf("Missing mandatory tag `%s` (did you mean `%s`?)", tag.Key, tag.Suggestion))
-			} else {
-				issues = append(issues, fmt.Sprintf("Missing mandatory tag `%s`", tag.Key))
+			message := tag.Message
+			if message == "" {
+				message = joinSentences(getMissingMandatoryTagMessage(tag), extra)
 			}
+			issue := joinSentences(fmt.Sprintf("Missing mandatory tag %s.", escapeAndFormatCode(tag.Key)), message)
+			issues = append(issues, ensureSentenceEnding(issue))
 			continue
 		}
 
+		value := tag.Value
+		if value == "" {
+			value = `""`
+		}
+		prefix := fmt.Sprintf("%s has invalid value %s.", escapeAndFormatCode(tag.Key), escapeAndFormatCode(value))
+
+		var detail string
 		switch {
 		case tag.Message != "":
-			issues = append(issues, fmt.Sprintf("Tag `%s=%s`: %s", tag.Key, tag.Value, tag.Message))
-		case tag.Suggestion != "":
-			issues = append(issues, fmt.Sprintf("Tag `%s=%s` is invalid (did you mean `%s`?)", tag.Key, tag.Value, tag.Suggestion))
-		case tag.ValidRegex != "":
-			issues = append(issues, fmt.Sprintf("Tag `%s=%s` does not match pattern `%s`", tag.Key, tag.Value, tag.ValidRegex))
+			detail = tag.Message
+		case len(tag.ValidValues) > 0:
+			detail = getInvalidTagMessage(tag, defaultTagsMarkdown)
 		default:
-			issues = append(issues, fmt.Sprintf("Tag `%s=%s` is not a valid value", tag.Key, tag.Value))
+			fromDefault := ""
+			if tag.FromDefaultTags {
+				fromDefault = fmt.Sprintf("This value is currently set by your %s.", defaultTagsMarkdown)
+			}
+			detail = joinSentences(fmt.Sprintf("Must match regex %s.", escapeAndFormatCode(tag.ValidRegex)), fromDefault)
 		}
+
+		issues = append(issues, joinSentences(prefix, detail))
+	}
+
+	// Combine all plain missing mandatory tags into a single issue, matching the
+	// dashboard. Listing each tag on its own line is noisy and drops the advisory
+	// about using default tags.
+	if len(resource.MissingMandatoryTags) > 0 {
+		noun := "tag"
+		if len(resource.MissingMandatoryTags) > 1 {
+			noun = "tags"
+		}
+		line := fmt.Sprintf("Missing mandatory %s: %s", noun, joinEscapedCode(resource.MissingMandatoryTags))
+		if extra != "" {
+			line += ". " + extra
+		}
+		issues = append(issues, line)
 	}
 
 	for _, p := range resource.PropagationProblems {
-		issues = append(issues, fmt.Sprintf("Tag propagation issue: `%s` from `%s` to `%s`", p.Attribute, p.From, p.To))
+		issues = append(issues, formatPropagationProblem(p))
 	}
 
 	return issues
+}
+
+// formatPropagationProblem builds the actionable message for a tag propagation
+// problem, listing the affected tags and the valid propagation sources.
+// See: dashboard/api/src/services/tagPolicies/index.ts createIssuesFromTagPolicyResultResource (~line 2640)
+func formatPropagationProblem(p event.PropagationProblem) string {
+	cause := "tag propagation is not configured"
+	if p.From != "" {
+		cause = fmt.Sprintf("tag propagation source of %s is invalid", escapeAndFormatCode(p.From))
+	}
+
+	remediation := fmt.Sprintf("setting %s to a valid value (%s)", escapeAndFormatCode(p.Attribute), joinEscapedCode(p.ValidSources))
+	if len(p.ValidSources) == 1 {
+		remediation = fmt.Sprintf("setting %s to %s", escapeAndFormatCode(p.Attribute), joinEscapedCode(p.ValidSources))
+	}
+
+	return fmt.Sprintf(
+		"Dynamically created %s resources will not have tag(s) %s because %s. Tag propagation should be configured by %s",
+		escapeAndFormatCode(p.To), joinEscapedCode(p.AffectedTags), cause, remediation,
+	)
+}
+
+// maxStoredValidValues caps how many valid values are stored/shown for a tag,
+// matching the dashboard's MAX_STORED_VALID_VALUES.
+const maxStoredValidValues = 5
+
+// getInvalidTagMessage describes the allowed values for an invalid (non-missing)
+// tag, including a "did you mean" suggestion and a default-tags note where
+// relevant.
+// See: dashboard/api/src/services/tagPolicies/index.ts getInvalidTagMessage (~line 2410)
+func getInvalidTagMessage(tag event.InvalidTag, defaultTagsMarkdown string) string {
+	if len(tag.ValidValues) == 0 {
+		return "No valid values configured."
+	}
+
+	fromDefault := ""
+	if tag.FromDefaultTags {
+		fromDefault = fmt.Sprintf("This value is currently set by your %s.", defaultTagsMarkdown)
+	}
+
+	// Legacy result type without a stored total count.
+	if tag.ValidValueCount == 0 {
+		if len(tag.ValidValues) > maxStoredValidValues {
+			return joinSentences(fmt.Sprintf("Must be one of the allowed values, such as %s.", joinEscapedCode(tag.ValidValues[:maxStoredValidValues])), fromDefault)
+		}
+		return joinSentences(fmt.Sprintf("Must be one of the allowed values: %s.", joinEscapedCode(tag.ValidValues)), fromDefault)
+	}
+
+	if tag.Suggestion != "" {
+		return joinSentences(fmt.Sprintf("Must be one of the %d allowed values - did you mean %s?", tag.ValidValueCount, escapeAndFormatCode(tag.Suggestion)), fromDefault)
+	}
+
+	if len(tag.ValidValues) == tag.ValidValueCount {
+		return joinSentences(fmt.Sprintf("Must be one of %s.", joinEscapedCode(tag.ValidValues)), fromDefault)
+	}
+
+	return joinSentences(fmt.Sprintf("Must be one of the %d allowed values, such as %s.", tag.ValidValueCount, joinEscapedCode(tag.ValidValues)), fromDefault)
+}
+
+// defaultTagsMarkdown returns the label used to refer to the project's default
+// tags, linking to the provider block when source-link information is available.
+func (data *Data) defaultTagsMarkdown(srcLink SourceLinker, resource event.TagPolicyResultResource) string {
+	if resource.ProviderLink == "" || data.CommitSHA == "" || data.RepoURL == "" || strings.Contains(resource.ProviderLink, ".infracost") {
+		return "default tags"
+	}
+
+	parts := strings.SplitN(resource.ProviderLink, ":", 2)
+	line := 0
+	if len(parts) > 1 {
+		line, _ = strconv.Atoi(parts[1])
+	}
+
+	moduleLink := buildSourceLink(srcLink, data.RepoURL, data.CommitSHA, parts[0], line)
+	if moduleLink == "" {
+		return "default tags"
+	}
+	return fmt.Sprintf("[default tags](%s)", moduleLink)
+}
+
+// defaultTagsExtra returns the advisory sentence about default tags appended to
+// missing mandatory tag issues, mirroring the dashboard. It is empty when the
+// resource's provider doesn't support default tags.
+func defaultTagsExtra(resource event.TagPolicyResultResource, defaultTagsMarkdown string) string {
+	if !resource.SupportsDefaultTags {
+		return ""
+	}
+	if !resource.HasDefaultTags {
+		return "Consider using default tags to avoid adding tags to individual resources."
+	}
+	if resource.DefaultTagsNotPropagated && resource.ResourceType == "aws_instance" {
+		return fmt.Sprintf("Note that your %s will not propagate to volume tags with your provider version.", defaultTagsMarkdown)
+	}
+	return fmt.Sprintf("Consider adding to your %s to avoid adding tags to individual resources.", defaultTagsMarkdown)
+}
+
+// getMissingMandatoryTagMessage describes the allowed values for a missing
+// mandatory tag (regex or enumerated values), or an empty string when there are
+// no constraints to describe.
+func getMissingMandatoryTagMessage(tag event.InvalidTag) string {
+	isList := len(tag.ValidValues) > 0
+	isRegex := tag.ValidRegex != ""
+
+	switch {
+	case isRegex:
+		return fmt.Sprintf("Must match regex %s.", escapeAndFormatCode(tag.ValidRegex))
+	case !isList:
+		return ""
+	case len(tag.ValidValues) == tag.ValidValueCount:
+		return fmt.Sprintf("Must be one of %s.", joinEscapedCode(tag.ValidValues))
+	default:
+		return fmt.Sprintf("Must be one of the %d allowed values, such as %s.", tag.ValidValueCount, joinEscapedCode(tag.ValidValues))
+	}
+}
+
+// joinEscapedCode wraps each string in inline code and joins them with ", ".
+func joinEscapedCode(values []string) string {
+	escaped := make([]string, len(values))
+	for i, v := range values {
+		escaped[i] = escapeAndFormatCode(v)
+	}
+	return strings.Join(escaped, ", ")
+}
+
+// ensureSentenceEnding trims the string and appends a full stop unless it
+// already ends with sentence-terminating punctuation.
+func ensureSentenceEnding(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	if strings.HasSuffix(s, ".") || strings.HasSuffix(s, "!") || strings.HasSuffix(s, "?") {
+		return s
+	}
+	return s + "."
+}
+
+// joinSentences joins non-empty parts with a space, ensuring each is terminated
+// with a full stop.
+func joinSentences(parts ...string) string {
+	var out []string
+	for _, p := range parts {
+		if s := ensureSentenceEnding(p); s != "" {
+			out = append(out, s)
+		}
+	}
+	return strings.TrimSpace(strings.Join(out, " "))
 }
 
 // formatGuardrailMessage builds the trigger description for a guardrail result,

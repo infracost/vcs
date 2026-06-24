@@ -156,7 +156,10 @@ func formatBudgetAmount(currentCost, amount *rat.Rat, currency string) string {
 	}
 	remaining := amount.Sub(currentCost)
 	pct := remaining.Div(amount).Mul(rat.New(100))
-	return fmt.Sprintf("%s (%s%% left)", formatCost(amount, currency), pct.StringFixed(1))
+	// Render at most one decimal, dropping a trailing ".0" so whole percentages
+	// read "50% left" rather than "50.0% left" (matches the dashboard).
+	pctStr := strings.TrimRight(strings.TrimRight(pct.StringFixed(1), "0"), ".")
+	return fmt.Sprintf("%s (%s%% left)", formatCost(amount, currency), pctStr)
 }
 
 func formatBudgetScope(tags []BudgetTag) string {

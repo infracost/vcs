@@ -24,7 +24,7 @@ func (data *Data) processProjectErrors(inputs *Inputs) {
 		var errors []string
 		for _, diag := range project.Diagnostics {
 			if diag.Critical {
-				errors = append(errors, diag.FormatMessage())
+				errors = append(errors, truncateMessage(diag.FormatMessage(), maxErrorMessageLength))
 			}
 		}
 		if len(errors) == 0 {
@@ -52,6 +52,21 @@ func (data *Data) processProjectErrors(inputs *Inputs) {
 	}
 
 	inputs.ProjectErrors = allErrors
+}
+
+// maxErrorMessageLength caps an individual error message so one huge error
+// can't blow the overall comment-size budget, matching the dashboard's
+// truncate(message, 1000).
+const maxErrorMessageLength = 1000
+
+// truncateMessage shortens s to at most max runes, appending a single-character
+// ellipsis when truncated (so the result is exactly max runes).
+func truncateMessage(s string, max int) string {
+	runes := []rune(s)
+	if len(runes) <= max {
+		return s
+	}
+	return string(runes[:max-1]) + "…"
 }
 
 func formatErrors(errors []string) string {

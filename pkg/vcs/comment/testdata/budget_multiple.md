@@ -41,7 +41,7 @@ This pull request is aligned with your company's FinOps policies and the Well-Ar
         <sub>From Jan 2026 till Dec 2026</sub>
       </td>
       <td align="right" valign="top">$800</td>
-      <td align="right" valign="top"><strong>$2,000 (60.0% left)</strong></td>
+      <td align="right" valign="top"><strong>$2,000 (60% left)</strong></td>
     </tr>
     <tr>
       <td align="left" valign="top">

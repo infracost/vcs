@@ -62,7 +62,7 @@ Workspace: prod
   +€20
 
     + Storage (S3)
-      +€23, +1000 GB*
+      +€23, +1,000 GB*
 
 Monthly cost change for my-project (Module path: modules/compute, Workspace: prod)
 Amount:  +€200 (EUR) (€300 → €500)
