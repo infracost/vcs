@@ -19,7 +19,7 @@ Use GP3 volumes instead of GP2 for better performance.
 `aws_ebs_volume.new`
   * This volume uses GP2, consider upgrading to GP3
     * 🔧 [Fix in your IDE](https://cost.dev/?utm_source=pr_comment&utm_content=fix_in_ide) — or ask your agent to apply it with Infracost Dev
-    </td></tr>
+</td></tr>
 
   </table>
 

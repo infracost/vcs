@@ -20,7 +20,7 @@ resource [aws_instance.web](https://github.com/my-org/my-repo/blob/def456/main.t
   * This instance runs 24/7 and could benefit from a reserved instance
     * 🔧 [Fix in your IDE](https://cost.dev/?utm_source=pr_comment&utm_content=fix_in_ide) — or ask your agent to apply it with Infracost Dev
     in project `my-project`
-    </td></tr>
+</td></tr>
 
   </table>
 
