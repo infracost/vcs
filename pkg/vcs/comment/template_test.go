@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/infracost/go-proto/pkg/diagnostic"
@@ -45,9 +46,9 @@ func TestRender(t *testing.T) {
 			name:           "minimal_empty",
 			maxCommentSize: 65000,
 			data: Data{
-				IsGithubApp:      true,
-				Currency:         "USD",
-				TotalMonthlyCost: rat.Zero,
+				SupportsBotCommands: true,
+				Currency:            "USD",
+				TotalMonthlyCost:    rat.Zero,
 			},
 			goldenFile: "minimal_empty.md",
 		},
@@ -55,7 +56,7 @@ func TestRender(t *testing.T) {
 			name:           "cost_increase",
 			maxCommentSize: 65000,
 			data: Data{
-				IsGithubApp:          true,
+				SupportsBotCommands:  true,
 				Currency:             "USD",
 				TotalMonthlyCost:     rat.New(250),
 				PastTotalMonthlyCost: rat.New(200),
@@ -132,9 +133,9 @@ func TestRender(t *testing.T) {
 			name:           "project_errors",
 			maxCommentSize: 65000,
 			data: Data{
-				IsGithubApp:      true,
-				Currency:         "USD",
-				TotalMonthlyCost: rat.Zero,
+				SupportsBotCommands: true,
+				Currency:            "USD",
+				TotalMonthlyCost:    rat.Zero,
 				Projects: []ProjectResult{
 					{
 						Name: "broken-project",
@@ -157,11 +158,11 @@ func TestRender(t *testing.T) {
 			name:           "governance_finops",
 			maxCommentSize: 65000,
 			data: Data{
-				IsGithubApp:      true,
-				Currency:         "USD",
-				TotalMonthlyCost: rat.New(100),
-				RepoURL:          "https://github.com/my-org/my-repo",
-				CommitSHA:        "def456",
+				SupportsBotCommands: true,
+				Currency:            "USD",
+				TotalMonthlyCost:    rat.New(100),
+				RepoURL:             "https://github.com/my-org/my-repo",
+				CommitSHA:           "def456",
 				FinOpsPolicyResults: []*provider.FinopsPolicyResult{
 					{
 						PolicyName:                  "Use reserved instances",
@@ -248,12 +249,13 @@ func TestRender(t *testing.T) {
 			name:           "preexisting_issues",
 			maxCommentSize: 65000,
 			data: Data{
-				IsGithubApp:      true,
-				Currency:         "USD",
-				TotalMonthlyCost: rat.New(100),
-				OrgSlug:          "my-org",
-				RepoID:           "repo-123",
-				BaseBranchName:   "main",
+				SupportsBotCommands: true,
+				Currency:            "USD",
+				TotalMonthlyCost:    rat.New(100),
+				CloudEnabled:        true,
+				OrgSlug:             "my-org",
+				RepoID:              "repo-123",
+				BaseBranchName:      "main",
 				PreviousFinOpsPolicyResults: []*provider.FinopsPolicyResult{
 					{
 						PolicySlug:                  "use-reserved",
@@ -285,11 +287,11 @@ func TestRender(t *testing.T) {
 			name:           "mixed_preexisting_and_new_issues",
 			maxCommentSize: 65000,
 			data: Data{
-				IsGithubApp:      true,
-				Currency:         "USD",
-				TotalMonthlyCost: rat.New(200),
-				RepoURL:          "https://github.com/my-org/my-repo",
-				CommitSHA:        "abc123",
+				SupportsBotCommands: true,
+				Currency:            "USD",
+				TotalMonthlyCost:    rat.New(200),
+				RepoURL:             "https://github.com/my-org/my-repo",
+				CommitSHA:           "abc123",
 				PreviousFinOpsPolicyResults: []*provider.FinopsPolicyResult{
 					{
 						PolicySlug:                  "use-gp3",
@@ -331,7 +333,7 @@ func TestRender(t *testing.T) {
 			name:           "guardrail_blocks",
 			maxCommentSize: 65000,
 			data: Data{
-				IsGithubApp:          true,
+				SupportsBotCommands:  true,
 				Currency:             "USD",
 				TotalMonthlyCost:     rat.New(500),
 				PastTotalMonthlyCost: rat.New(100),
@@ -381,7 +383,7 @@ func TestRender(t *testing.T) {
 			name:           "environmental_metrics",
 			maxCommentSize: 65000,
 			data: Data{
-				IsGithubApp:                     true,
+				SupportsBotCommands:             true,
 				EnableEnvironmentalMetrics:      true,
 				Currency:                        "USD",
 				TotalMonthlyCost:                rat.New(300),
@@ -444,11 +446,11 @@ func TestRender(t *testing.T) {
 			name:           "governance_tagging",
 			maxCommentSize: 65000,
 			data: Data{
-				IsGithubApp:      true,
-				Currency:         "USD",
-				TotalMonthlyCost: rat.New(100),
-				RepoURL:          "https://github.com/my-org/my-repo",
-				CommitSHA:        "abc123",
+				SupportsBotCommands: true,
+				Currency:            "USD",
+				TotalMonthlyCost:    rat.New(100),
+				RepoURL:             "https://github.com/my-org/my-repo",
+				CommitSHA:           "abc123",
 				TaggingPolicyResults: []event.TaggingPolicyResult{
 					{
 						Name:        "Require env tag",
@@ -612,7 +614,7 @@ func TestRender(t *testing.T) {
 			name:           "truncated_cost_details",
 			maxCommentSize: 2800,
 			data: Data{
-				IsGithubApp:          true,
+				SupportsBotCommands:  true,
 				Currency:             "USD",
 				TotalMonthlyCost:     rat.New(1000),
 				PastTotalMonthlyCost: rat.New(500),
@@ -906,7 +908,7 @@ func TestRender(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := Render(DefaultTemplate, tt.maxCommentSize, githubSourceLink, tt.data)
+			got, err := Render(DefaultTemplate, tt.maxCommentSize, SizeUnitBytes, githubSourceLink, tt.data)
 			if err != nil {
 				t.Fatalf("Render() error: %v", err)
 			}
@@ -929,5 +931,120 @@ func TestRender(t *testing.T) {
 				t.Errorf("Render() mismatch (-want +got):\n%s", diff)
 			}
 		})
+	}
+}
+
+func TestRunURL(t *testing.T) {
+	tests := []struct {
+		name string
+		data Data
+		want string
+	}{
+		{
+			name: "cloud enabled with all identifiers",
+			data: Data{CloudEnabled: true, OrgSlug: "my-org", RepoID: "repo-123", RunID: "run-456"},
+			want: "https://dashboard.infracost.io/org/my-org/repos/repo-123/runs/run-456",
+		},
+		{
+			name: "cloud disabled returns empty",
+			data: Data{CloudEnabled: false, OrgSlug: "my-org", RepoID: "repo-123", RunID: "run-456"},
+			want: "",
+		},
+		{
+			name: "missing run id returns empty",
+			data: Data{CloudEnabled: true, OrgSlug: "my-org", RepoID: "repo-123"},
+			want: "",
+		},
+		{
+			name: "missing org slug returns empty",
+			data: Data{CloudEnabled: true, RepoID: "repo-123", RunID: "run-456"},
+			want: "",
+		},
+		{
+			name: "missing repo id returns empty",
+			data: Data{CloudEnabled: true, OrgSlug: "my-org", RunID: "run-456"},
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.data.runURL(); got != tt.want {
+				t.Errorf("runURL() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTruncateMiddleStr(t *testing.T) {
+	// "─" (U+2500) is 3 bytes in UTF-8. Use it to prove cuts never split a rune.
+	multibyte := strings.Repeat("─", 20)
+
+	tests := []struct {
+		name   string
+		s      string
+		maxLen int
+		unit   SizeUnit
+	}{
+		{name: "ascii under byte limit", s: "hello world", maxLen: 100, unit: SizeUnitBytes},
+		{name: "ascii over byte limit", s: strings.Repeat("abcd", 50), maxLen: 20, unit: SizeUnitBytes},
+		{name: "multibyte byte limit", s: multibyte, maxLen: 20, unit: SizeUnitBytes},
+		{name: "multibyte rune limit", s: multibyte, maxLen: 10, unit: SizeUnitRunes},
+		{name: "tiny budget", s: multibyte, maxLen: 2, unit: SizeUnitBytes},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := truncateMiddleStr(tt.s, tt.maxLen, tt.unit)
+
+			if !utf8.ValidString(got) {
+				t.Fatalf("truncateMiddleStr produced invalid UTF-8: %q", got)
+			}
+			if measureLen(got, tt.unit) > tt.maxLen {
+				t.Errorf("result length %d in unit %d exceeds maxLen %d", measureLen(got, tt.unit), tt.unit, tt.maxLen)
+			}
+		})
+	}
+}
+
+func TestProcessFixedIssuesTruncation(t *testing.T) {
+	// Seven policies, policy i fixing i issues. After the top-5 cap the section
+	// should list 5 policies and roll the remaining 2+1=3 issues into the count.
+	var previous, current []*provider.FinopsPolicyResult
+	for i := 1; i <= 7; i++ {
+		name := fmt.Sprintf("policy-%02d", i)
+		var failing []*provider.FinopsPolicyFailingResource
+		var passingIDs []string
+		for j := 0; j < i; j++ {
+			id := fmt.Sprintf("%s.r%d", name, j)
+			failing = append(failing, &provider.FinopsPolicyFailingResource{Id: id})
+			passingIDs = append(passingIDs, id)
+		}
+		previous = append(previous, &provider.FinopsPolicyResult{
+			PolicyName: name, PolicySlug: name, IncludeInPullRequestComment: true, FailingResources: failing,
+		})
+		// Current run: same resources now passing, so each counts as fixed.
+		current = append(current, &provider.FinopsPolicyResult{
+			PolicyName: name, PolicySlug: name, IncludeInPullRequestComment: true, PassingResourceIds: passingIDs,
+		})
+	}
+
+	data := Data{FinOpsPolicyResults: current, PreviousFinOpsPolicyResults: previous}
+	finopsIndex := buildPolicyFailureIndex(data.FinOpsPolicyResults, data.PreviousFinOpsPolicyResults)
+	emptyPolicy := buildPolicyFailureIndex(nil, nil)
+	emptyTagging := buildTaggingFailureIndex(nil, nil)
+
+	inputs := new(Inputs)
+	data.processFixedIssues(inputs, finopsIndex, emptyPolicy, emptyTagging)
+
+	if len(inputs.FixedIssueCounts) != FixedIssueLimit {
+		t.Errorf("FixedIssueCounts len = %d, want %d", len(inputs.FixedIssueCounts), FixedIssueLimit)
+	}
+	if inputs.FixedIssuesTruncated != 3 {
+		t.Errorf("FixedIssuesTruncated = %d, want 3", inputs.FixedIssuesTruncated)
+	}
+	// Top entry should be the policy with the most fixes (7).
+	if inputs.FixedIssueCounts[0].FixedIssues != 7 {
+		t.Errorf("top FixedIssues = %d, want 7", inputs.FixedIssueCounts[0].FixedIssues)
 	}
 }

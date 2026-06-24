@@ -41,7 +41,7 @@ func (data *Data) processGovernance(inputs *Inputs, srcLink SourceLinker, finops
 		}
 	}
 
-	inputs.GovernanceSentence = formatGovernanceSentence(totalIssues, hasGuardrail, data.IsGithubApp)
+	inputs.GovernanceSentence = formatGovernanceSentence(totalIssues, hasGuardrail, data.SupportsBotCommands)
 	return hasGuardrail
 }
 
@@ -54,7 +54,7 @@ func (data *Data) processPolicyResults(inputs *Inputs, title string, results []*
 
 	table := GovernanceTable{
 		Title:    title,
-		CloudURL: data.CloudURL,
+		CloudURL: data.runURL(),
 	}
 
 	for _, result := range results {
@@ -134,7 +134,7 @@ func (data *Data) processTaggingPolicyResults(inputs *Inputs, index taggingFailu
 
 	table := GovernanceTable{
 		Title:    "Tagging policies",
-		CloudURL: data.CloudURL,
+		CloudURL: data.runURL(),
 	}
 
 	for _, result := range data.TaggingPolicyResults {
@@ -217,7 +217,7 @@ func (data *Data) processGuardrailResults(inputs *Inputs) {
 
 	table := GovernanceTable{
 		Title:    "Guardrails",
-		CloudURL: data.CloudURL,
+		CloudURL: data.runURL(),
 	}
 
 	for _, result := range data.GuardrailResults {
@@ -254,7 +254,7 @@ func (data *Data) processGuardrailResults(inputs *Inputs) {
 
 // formatGovernanceSentence returns a summary line about policy alignment.
 // See: dashboard/api/src/services/templates/partials/governanceOutputs.ts formatGovernanceSentence (~line 214)
-func formatGovernanceSentence(totalIssuesCount int, hasGuardrail bool, isGithubApp bool) string {
+func formatGovernanceSentence(totalIssuesCount int, hasGuardrail bool, supportsBotCommands bool) string {
 	if totalIssuesCount == 0 {
 		if hasGuardrail {
 			return ""
@@ -267,7 +267,7 @@ func formatGovernanceSentence(totalIssuesCount int, hasGuardrail bool, isGithubA
 		fixing = `Consider fixing this issue, it doesn't align with your company's FinOps policies & the Well-Architected Framework.`
 	}
 
-	if isGithubApp {
+	if supportsBotCommands {
 		return fmt.Sprintf("<p>%s <b>Add a PR comment with <code>@infracost help</code> to see how you can dismiss or snooze issues and unblock your PR.</b></p>", fixing)
 	}
 
@@ -511,6 +511,10 @@ const (
 	gramsCO2PerCarKm             = 251
 )
 
+// infracostDevFixInIDEURL is the "Fix in your IDE" link shown inline on each
+// issue to promote Infracost Dev.
+const infracostDevFixInIDEURL = "https://cost.dev/?utm_source=pr_comment&utm_content=fix_in_ide"
+
 // formatFinopsIssueDescription formats a FinOps issue description with optional
 // savings and carbon/water metrics, matching the dashboard's fetchCommentPolicies
 // formatting logic.
@@ -537,6 +541,12 @@ func formatFinopsIssueDescription(issue *provider.FinopsResourceIssue, currency 
 			}
 		}
 	}
+
+	// Promote Infracost Dev: invite the user to remediate the issue in their IDE.
+	description = fmt.Sprintf(
+		"%s\n%s* 🔧 [Fix in your IDE](%s) — or ask your agent to apply it with Infracost Dev",
+		description, listIndent, infracostDevFixInIDEURL,
+	)
 
 	return description
 }

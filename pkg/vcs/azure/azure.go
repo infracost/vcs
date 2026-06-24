@@ -25,7 +25,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// maxCommentSize is the Azure DevOps comment body limit, in characters.
+// maxCommentSize is the Azure DevOps comment body limit, in characters (runes).
 // comment.Render reserves headroom inside this limit for the markdown
 // tag and truncation imprecision; do not subtract from it here.
 const maxCommentSize = 150000
@@ -97,11 +97,15 @@ func New(ctx context.Context, repoURL, token string, prNumber int, opts Options)
 
 // GenerateComment renders a PR comment from the given data.
 func (a *Azure) GenerateComment(data comment.Data) (string, error) {
-	return comment.Render(a.tmpl, a.MaxCommentSize(), a.SourceLink, data)
+	size, unit := a.MaxCommentSize()
+	return comment.Render(a.tmpl, size, unit, a.SourceLink, data)
 }
 
-// MaxCommentSize returns the Azure DevOps comment body size limit in characters.
-func (a *Azure) MaxCommentSize() int { return maxCommentSize }
+// MaxCommentSize returns the Azure DevOps comment body size limit. Azure DevOps
+// measures the limit in characters (Unicode code points).
+func (a *Azure) MaxCommentSize() (int, comment.SizeUnit) {
+	return maxCommentSize, comment.SizeUnitRunes
+}
 
 // SourceLink returns a URL to a file/line in the Azure DevOps web UI following
 // the ?path=&version=GC<sha>&line=<n> shape.

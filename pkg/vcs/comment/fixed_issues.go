@@ -8,6 +8,11 @@ import (
 	"github.com/infracost/proto/gen/go/infracost/provider"
 )
 
+// FixedIssueLimit caps the number of per-policy fixed-issue rows shown. Any
+// remaining fixed issues are summarised as "...and N more issues" so the
+// section stays readable when many policies have fixes.
+const FixedIssueLimit = 5
+
 // processFixedIssues computes per-policy fixed issue counts by comparing
 // current vs previous policy results, and formats the summary sentence.
 // See: dashboard/api/src/services/templates/partials/fixedIssuesSummary.ts
@@ -41,6 +46,15 @@ func (data *Data) processFixedIssues(inputs *Inputs, finopsIndex, securityIndex 
 		inputs.FixedIssuesSentence = "This pull request fixes a pre-existing issue in the default branch"
 	} else {
 		inputs.FixedIssuesSentence = fmt.Sprintf("This pull request fixes %d pre-existing issues in the default branch", totalIssues)
+	}
+
+	// Show only the top policies (already sorted by fixed count descending) and
+	// roll the rest up into a count of remaining fixed issues.
+	if len(counts) > FixedIssueLimit {
+		for _, c := range counts[FixedIssueLimit:] {
+			inputs.FixedIssuesTruncated += c.FixedIssues
+		}
+		counts = counts[:FixedIssueLimit]
 	}
 	inputs.FixedIssueCounts = counts
 }
