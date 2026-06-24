@@ -59,14 +59,14 @@ func (data *Data) processProjectErrors(inputs *Inputs) {
 // truncate(message, 1000).
 const maxErrorMessageLength = 1000
 
-// truncateMessage shortens s to at most max runes, appending a single-character
-// ellipsis when truncated (so the result is exactly max runes).
-func truncateMessage(s string, max int) string {
+// truncateMessage shortens s to at most limit runes, appending a single-character
+// ellipsis when truncated (so the result is exactly limit runes).
+func truncateMessage(s string, limit int) string {
 	runes := []rune(s)
-	if len(runes) <= max {
+	if len(runes) <= limit {
 		return s
 	}
-	return string(runes[:max-1]) + "…"
+	return string(runes[:limit-1]) + "…"
 }
 
 func formatErrors(errors []string) string {
