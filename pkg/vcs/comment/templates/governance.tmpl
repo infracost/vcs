@@ -22,16 +22,14 @@
 <tr><td></td><td>
 
 {{ if .Location }}{{ .Location }}{{ end }}
-  {{ range .ProjectIssues -}}
-    {{ range .Issues -}}
-* {{ . }}
-    {{ end -}}
-    {{ if .ProjectNamesLabel -}}
-
-in {{ .ProjectNamesLabel }}
-    {{ end -}}
-
-  {{ end -}}
+{{- range .ProjectIssues }}
+{{- range .Issues }}
+  * {{ . }}
+{{- end }}
+{{- if .ProjectNamesLabel }}
+    in {{ .ProjectNamesLabel }}
+{{- end }}
+{{- end }}
 </td></tr>
 {{ end -}}
 {{ if gt .TruncatedIssues 0 -}}

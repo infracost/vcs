@@ -189,12 +189,14 @@ func formatPercentChange(oldCost, newCost *rat.Rat) string {
 
 	p := newCost.Div(oldCost).Sub(rat.New(1)).Mul(rat.New(100)).Round(0)
 
-	percentSym := ""
+	sign := ""
 	if p.GreaterThanZero() {
-		percentSym = "+"
+		sign = "+"
+	} else if p.LessThan(rat.Zero) {
+		sign = "-"
 	}
 
-	return fmt.Sprintf("%s%s%%", percentSym, p.StringFixed(0))
+	return fmt.Sprintf("%s%s%%", sign, withThousandSeparators(p.Abs().StringFixed(0)))
 }
 
 // formatCost formats a cost value with currency symbol, matching the

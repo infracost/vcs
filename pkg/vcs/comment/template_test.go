@@ -464,7 +464,9 @@ func TestRender(t *testing.T) {
 								Path:                 "main.tf",
 								Line:                 10,
 								ProjectNames:         []string{"my-project"},
-								MissingMandatoryTags: []string{"env"},
+								MissingMandatoryTags: []string{"Service", "Environment", "Team"},
+								SupportsDefaultTags:  true,
+								HasDefaultTags:       true,
 							},
 							{
 								Address:      "aws_s3_bucket.data",
@@ -473,6 +475,21 @@ func TestRender(t *testing.T) {
 								ProjectNames: []string{"my-project", "other-project"},
 								InvalidTags: []event.InvalidTag{
 									{Key: "env", Value: "prod", ValidRegex: "/^(production|staging|dev)$/", Message: ""},
+									{Key: "tier", Value: "gold", ValidValues: []string{"standard", "premium"}, ValidValueCount: 2},
+								},
+							},
+							{
+								Address:      "aws_ecs_service.api",
+								Path:         "ecs.tf",
+								Line:         20,
+								ProjectNames: []string{"my-project"},
+								PropagationProblems: []event.PropagationProblem{
+									{
+										Attribute:    "propagate_tags",
+										To:           "aws_ecs_task",
+										ValidSources: []string{"SERVICE", "TASK_DEFINITION"},
+										AffectedTags: []string{"Service", "Environment"},
+									},
 								},
 							},
 						},

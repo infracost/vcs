@@ -21,7 +21,7 @@ Graviton instances are more energy efficient.
     * 💰 save $600/year
     * 🌱 avoid 2.40 t CO₂e - that's more than 16 flights between London & Paris
     * 🔧 [Fix in your IDE](https://cost.dev/?utm_source=pr_comment&utm_content=fix_in_ide) — or ask your agent to apply it with Infracost Dev
-    </td></tr>
+</td></tr>
 
   </table>
 <details >
