@@ -1,16 +1,16 @@
 {{- define "governanceEntry" }}
 <tr><td colspan="2" title="{{ if .Blocking }}Blocking failure{{ else }}Failure{{ end }}">
-  {{ if .Details -}}
-  <details {{ if .ExpandDetails }}open{{ end }}>
-    <summary>
-  {{- end }}
-    <b>{{ if .Blocking }}❌{{ else }}🔴{{ end }} {{ .Title }}</b>
-  {{ if .Details -}}
-    </summary><br/>
+{{ if .Details -}}
+<details {{ if .ExpandDetails }}open{{ end }}>
+<summary>
+{{ end -}}
+<b>{{ if .Blocking }}❌{{ else }}🔴{{ end }} {{ .Title }}</b>
+{{- if .Details }}
+</summary><br/>
 
 {{ .Details }}
-  </details>
-  {{- end }}
+</details>
+{{- end }}
 </td></tr>
 {{ if .Message -}}
 <tr><td></td><td>
