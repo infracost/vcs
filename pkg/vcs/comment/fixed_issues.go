@@ -98,6 +98,47 @@ func finopsFixedIssueCounts(previousResults []*provider.FinopsPolicyResult, inde
 	return counts
 }
 
+// finopsResolvedCount counts FinOps/security failing resources from the base
+// branch that no longer fail at head, whether fixed in place or removed. Unlike
+// finopsFixedIssueCounts it does not exclude deleted resources, so it matches
+// the dashboard's fixedIssues + fixedRemovedIssues used in the pre-existing
+// remaining calculation.
+func finopsResolvedCount(previousResults []*provider.FinopsPolicyResult, index policyFailureIndex) int {
+	resolved := 0
+	for _, prev := range previousResults {
+		if !prev.IncludeInPullRequestComment {
+			continue
+		}
+		currentIDs := index.current[prev.PolicySlug]
+		for _, r := range prev.FailingResources {
+			if currentIDs != nil && currentIDs[r.Id] {
+				continue
+			}
+			resolved++
+		}
+	}
+	return resolved
+}
+
+// taggingResolvedCount counts tagging failing addresses from the base branch
+// that no longer fail at head (fixed or removed). See finopsResolvedCount.
+func taggingResolvedCount(results []event.TaggingPolicyResult, index taggingFailureIndex) int {
+	resolved := 0
+	for _, result := range results {
+		if !result.PRComment {
+			continue
+		}
+		currentAddrs := index.current[result.TagPolicyID]
+		for addr := range index.previous[result.TagPolicyID] {
+			if currentAddrs != nil && currentAddrs[addr] {
+				continue
+			}
+			resolved++
+		}
+	}
+	return resolved
+}
+
 // taggingFixedIssueCounts computes fixed issue counts for tagging policies.
 // A fixed issue is an address that was failing previously, is no longer
 // failing, and still appears in some current policy result. Addresses in the

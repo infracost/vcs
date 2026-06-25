@@ -79,7 +79,7 @@ func Render(tmpl *template.Template, maxCommentSize int, unit SizeUnit, srcLink 
 	data.processProjectCosts(inputs)
 	data.processProjectCostDetails(inputs)
 	if !hasGuardrail {
-		data.processPreexistingIssues(inputs)
+		data.processPreexistingIssues(inputs, finopsIndex, taggingIndex)
 	}
 
 	return renderWithTruncation(tmpl, inputs, maxCommentSize, unit)
@@ -277,19 +277,17 @@ func formatCostDetailsMsg(hasUnsupported, hasError bool) string {
 // processPreexistingIssues computes the pre-existing issues sentence by
 // counting total failed issues on the base branch and subtracting fixed issues.
 // See: dashboard/api/src/services/templates/partials/preexistingIssuesSentenceText.ts
-func (data *Data) processPreexistingIssues(inputs *Inputs) {
+func (data *Data) processPreexistingIssues(inputs *Inputs, finopsIndex policyFailureIndex, taggingIndex taggingFailureIndex) {
 	if !data.CloudEnabled || data.BaseBranchName == "" || data.OrgSlug == "" || data.RepoID == "" {
 		return
 	}
 
-	// Count total failing issues on the base branch from previous results.
-	totalFailed := 0
+	// Total pre-existing issues on the base branch. The dashboard counts FinOps
+	// and tagging only (security is excluded) and includes dismissed (ignored)
+	// issues; those are filtered out of the results upstream and supplied as
+	// PreExistingIgnoredCount, mirroring newIssues + ignoredIssues.
+	totalFailed := data.PreExistingIgnoredCount
 	for _, prev := range data.PreviousFinOpsPolicyResults {
-		if prev.IncludeInPullRequestComment {
-			totalFailed += len(prev.FailingResources)
-		}
-	}
-	for _, prev := range data.PreviousSecurityPolicyResults {
 		if prev.IncludeInPullRequestComment {
 			totalFailed += len(prev.FailingResources)
 		}
@@ -304,13 +302,13 @@ func (data *Data) processPreexistingIssues(inputs *Inputs) {
 		return
 	}
 
-	// Sum fixed issues from what we already computed.
-	totalFixed := 0
-	for _, c := range inputs.FixedIssueCounts {
-		totalFixed += c.FixedIssues
-	}
+	// Issues this PR resolved: base-branch FinOps/tagging failures no longer
+	// failing at head, whether fixed in place or removed (security excluded).
+	// Matches the dashboard's fixedIssues + fixedRemovedIssues subtraction.
+	resolved := finopsResolvedCount(data.PreviousFinOpsPolicyResults, finopsIndex) +
+		taggingResolvedCount(data.TaggingPolicyResults, taggingIndex)
 
-	remaining := totalFailed - totalFixed
+	remaining := totalFailed - resolved
 	if remaining <= 0 {
 		return
 	}
