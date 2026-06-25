@@ -95,6 +95,12 @@ type Data struct {
 	TaggingPolicyResults         []event.TaggingPolicyResult
 	PreviousTaggingPolicyResults []event.TaggingPolicyResult
 
+	// PreExistingIgnoredCount is the number of base-branch FinOps/tagging issues
+	// the user has dismissed (ignored). These are filtered out of the policy
+	// results upstream, so they're supplied as a count and added back into the
+	// pre-existing-issues total to match the dashboard (newIssues + ignoredIssues).
+	PreExistingIgnoredCount int
+
 	// GuardrailResults contains the aggregated guardrail results.
 	GuardrailResults         []event.GuardrailResult
 	PreviousGuardrailResults []event.GuardrailResult
