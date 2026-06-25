@@ -99,6 +99,12 @@ type Data struct {
 	// the user has dismissed (ignored). These are filtered out of the policy
 	// results upstream, so they're supplied as a count and added back into the
 	// pre-existing-issues total to match the dashboard (newIssues + ignoredIssues).
+	//
+	// IMPORTANT: count dismissed issues for PR-comment policies only (those with
+	// IncludeInPullRequestComment / PRComment set), since the failing-resource
+	// term it's added to is scoped the same way (and so is the dashboard's
+	// ignoredIssues aggregate). Including dismissed issues from hidden policies
+	// here would inflate the total with issues the comment never counts.
 	PreExistingIgnoredCount int
 
 	// GuardrailResults contains the aggregated guardrail results.
