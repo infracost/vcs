@@ -182,7 +182,7 @@ func (data *Data) repoCostsMessage() string {
 	baseMsg := "Note: Repo cost estimates are based on baseline and usage costs configured"
 	cloudSettingsStr := "Infracost Cloud settings"
 	if data.CloudEnabled && data.OrgSlug != "" {
-		cloudSettingsStr = fmt.Sprintf("[Infracost Cloud settings](https://dashboard.infracost.io/org/%s/settings)", data.OrgSlug)
+		cloudSettingsStr = fmt.Sprintf("[Infracost Cloud settings](https://dashboard.infracost.io/org/%s/settings/usage-cost-defaults)", data.OrgSlug)
 	}
 	docsMsg := fmt.Sprintf("See [our documentation](%s) to learn more.", usageDocsURL)
 

@@ -21,7 +21,7 @@
 {{- template "costChangesAndBudgets" . }}
 {{- if .DisplayCosts }}
 <details {{ if .ExpandCosts }}open{{ end }}>
-  <summary><b>{{ .CostChangeSentence }}</b> {{ .CarbonWaterSummary }}</summary>
+  <summary><b>{{ .CostChangeSentence }}</b>{{ if .CarbonWaterSummary }} {{ .CarbonWaterSummary }}{{ end }}</summary>
   <br/>
 {{- template "projectCosts" . }}
   <details>
@@ -33,13 +33,15 @@
   </details>
 
 </details>
-
-<hr/>
 {{- end }}
 
 {{- if .PreexistingIssuesSentence }}
 
 {{ .PreexistingIssuesSentence }}
+{{- end }}
+{{- if or .DisplayCosts (gt (len .GovernanceTables) 0) }}
+
+<hr/>
 {{- end }}
 {{- if gt (len .GovernanceTables) 0 }}
 {{- template "infracostDevPromo" . }}

@@ -2,7 +2,7 @@
 
 This pull request is aligned with your company's FinOps policies and the Well-Architected Framework.
 <details >
-  <summary><b>Monthly estimate increased by $500 📈</b> </summary>
+  <summary><b>Monthly estimate increased by $500 📈</b></summary>
   <br/>
 
 <table>
@@ -39,7 +39,7 @@ This pull request is aligned with your company's FinOps policies and the Well-Ar
 ```
 Key: * usage cost, ~ changed, + added, - removed
 
-──────────────...nfracost-usageyml) for other options.
+──────────────...infracost-usageyml) for other options.
 
 5 cloud resources were detected:
 ∙ 5 were estimated
