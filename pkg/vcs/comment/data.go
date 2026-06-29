@@ -107,6 +107,20 @@ type Data struct {
 	// here would inflate the total with issues the comment never counts.
 	PreExistingIgnoredCount int
 
+	// ExternalPreExistingCount is the number of base-branch pre-existing
+	// FinOps/tagging issues (new + ignored, PR-comment policies) for projects
+	// that were NOT re-run in this PR, supplied by the dashboard. The runner
+	// only computes Previous*PolicyResults (and PreExistingIgnoredCount) for the
+	// projects it re-ran, so without this term the pre-existing total would only
+	// reflect the changed projects rather than the whole repo. It is added to
+	// the pre-existing total alongside the re-run projects' counts.
+	//
+	// IMPORTANT: this must be summed over the NOT-re-run projects only. The
+	// re-run projects are already counted via Previous*PolicyResults +
+	// PreExistingIgnoredCount, so including their dashboard counts here would
+	// double-count them.
+	ExternalPreExistingCount int
+
 	// GuardrailResults contains the aggregated guardrail results.
 	GuardrailResults         []event.GuardrailResult
 	PreviousGuardrailResults []event.GuardrailResult

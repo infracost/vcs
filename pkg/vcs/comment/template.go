@@ -286,7 +286,11 @@ func (data *Data) processPreexistingIssues(inputs *Inputs, finopsIndex policyFai
 	// and tagging only (security is excluded) and includes dismissed (ignored)
 	// issues; those are filtered out of the results upstream and supplied as
 	// PreExistingIgnoredCount, mirroring newIssues + ignoredIssues.
-	totalFailed := data.PreExistingIgnoredCount
+	//
+	// The Previous*PolicyResults loops below cover only the projects the runner
+	// re-ran this PR. ExternalPreExistingCount adds the dashboard's count for the
+	// projects that were NOT re-run, so the total reflects the whole repo.
+	totalFailed := data.PreExistingIgnoredCount + data.ExternalPreExistingCount
 	for _, prev := range data.PreviousFinOpsPolicyResults {
 		if prev.IncludeInPullRequestComment {
 			totalFailed += len(prev.FailingResources)
@@ -317,15 +321,18 @@ func (data *Data) processPreexistingIssues(inputs *Inputs, finopsIndex policyFai
 		data.OrgSlug, data.RepoID)
 	dashboardURL := fmt.Sprintf("https://dashboard.infracost.io/org/%s#leaderboard?utm_source=pr_comment&utm_content=org_leaderboard",
 		data.OrgSlug)
+	const engineerGuideURL = "https://www.infracost.io/docs/infracost_cloud/engineer_guide/"
 
 	issueStr := fmt.Sprintf("are also [%d pre-existing issues]", remaining)
+	fixStr := "Fix them"
 	if remaining == 1 {
 		issueStr = "is also [one pre-existing issue]"
+		fixStr = "Fix it"
 	}
 
 	inputs.PreexistingIssuesSentence = fmt.Sprintf(
-		"There %s(%s) in the `%s` branch. Fix some to climb your [org's leaderboard](%s) 🥇",
-		issueStr, repoURL, data.BaseBranchName, dashboardURL,
+		"There %s(%s) in `%s`. %s with [Claude, VSCode, etc.](%s) - and climb your [org's leaderboard](%s) 🥇",
+		issueStr, repoURL, data.BaseBranchName, fixStr, engineerGuideURL, dashboardURL,
 	)
 }
 

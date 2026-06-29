@@ -58,6 +58,31 @@ func TestPreexisting_AddsIgnoredCount(t *testing.T) {
 	}
 }
 
+func TestPreexisting_AddsExternalCount(t *testing.T) {
+	d := baseData()
+	// No projects re-run (no Previous* results), but the dashboard reports 5
+	// pre-existing issues for the projects that were not re-run.
+	d.ExternalPreExistingCount = 5
+
+	if got := preexistingSentence(d); !strings.Contains(got, "5 pre-existing issues") {
+		t.Errorf("expected 5 pre-existing issues from external count, got %q", got)
+	}
+}
+
+func TestPreexisting_CombinesExternalWithRerun(t *testing.T) {
+	d := baseData()
+	// Re-run projects: 1 still-failing FinOps issue + 2 dismissed (ignored).
+	// Not-re-run projects (from dashboard): 4. Total 7, none resolved.
+	d.PreviousFinOpsPolicyResults = []*provider.FinopsPolicyResult{finopsResult("use", "r1")}
+	d.FinOpsPolicyResults = []*provider.FinopsPolicyResult{finopsResult("use", "r1")}
+	d.PreExistingIgnoredCount = 2
+	d.ExternalPreExistingCount = 4
+
+	if got := preexistingSentence(d); !strings.Contains(got, "7 pre-existing issues") {
+		t.Errorf("expected 7 pre-existing issues (1 + 2 ignored + 4 external), got %q", got)
+	}
+}
+
 func TestPreexisting_CountsRemovedAsResolved(t *testing.T) {
 	d := baseData()
 	// r1 and r2 failed on base; only r1 still fails at head (r2 removed), so one
