@@ -286,7 +286,11 @@ func (data *Data) processPreexistingIssues(inputs *Inputs, finopsIndex policyFai
 	// and tagging only (security is excluded) and includes dismissed (ignored)
 	// issues; those are filtered out of the results upstream and supplied as
 	// PreExistingIgnoredCount, mirroring newIssues + ignoredIssues.
-	totalFailed := data.PreExistingIgnoredCount
+	//
+	// The Previous*PolicyResults loops below cover only the projects the runner
+	// re-ran this PR. ExternalPreExistingCount adds the dashboard's count for the
+	// projects that were NOT re-run, so the total reflects the whole repo.
+	totalFailed := data.PreExistingIgnoredCount + data.ExternalPreExistingCount
 	for _, prev := range data.PreviousFinOpsPolicyResults {
 		if prev.IncludeInPullRequestComment {
 			totalFailed += len(prev.FailingResources)
