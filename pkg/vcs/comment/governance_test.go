@@ -78,6 +78,26 @@ func TestFormatFinopsResourceLocation(t *testing.T) {
 			},
 			want: "resource [aws_instance.web](https://github.com/my-org/my-repo/blob/abc123/dev/main.tf#L9)",
 		},
+		{
+			// Module-source URL already carries a #Lx-Ly anchor: don't append a second.
+			name: "module url with existing anchor not doubled",
+			resource: &provider.FinopsPolicyFailingResource{
+				CauseAddress: "module.aft.aws_s3_bucket.this", Path: "x",
+				ModulePath:     "https://github.com/aws-ia/terraform-aws-control_tower_account_factory/blob/HEAD/modules/aft-feature-options/s3.tf#L8-L11",
+				ModuleCallPath: "module.aft", ModuleCallStartLine: 16, StartLine: 8,
+			},
+			want: "resource [aws_s3_bucket.this](https://github.com/aws-ia/terraform-aws-control_tower_account_factory/blob/HEAD/modules/aft-feature-options/s3.tf#L8-L11) provisioned by module [module.aft](https://github.com/my-org/my-repo/blob/abc123/module.aft#L16)",
+		},
+		{
+			// Module-source URL without an anchor gets a single one.
+			name: "module url without anchor gets single anchor",
+			resource: &provider.FinopsPolicyFailingResource{
+				CauseAddress: "module.aft.aws_s3_bucket.this", Path: "x",
+				ModulePath:     "https://github.com/aws-ia/repo/blob/HEAD/s3.tf",
+				ModuleCallPath: "module.aft", ModuleCallStartLine: 16, StartLine: 8,
+			},
+			want: "resource [aws_s3_bucket.this](https://github.com/aws-ia/repo/blob/HEAD/s3.tf#L8) provisioned by module [module.aft](https://github.com/my-org/my-repo/blob/abc123/module.aft#L16)",
+		},
 	}
 
 	for _, tt := range tests {
