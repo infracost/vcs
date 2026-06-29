@@ -12,8 +12,9 @@ import (
 func preexistingSentence(d Data) string {
 	inputs := new(Inputs)
 	finopsIndex := buildPolicyFailureIndex(d.FinOpsPolicyResults, d.PreviousFinOpsPolicyResults)
+	securityIndex := buildPolicyFailureIndex(d.SecurityPolicyResults, d.PreviousSecurityPolicyResults)
 	taggingIndex := buildTaggingFailureIndex(d.TaggingPolicyResults, d.PreviousTaggingPolicyResults)
-	d.processPreexistingIssues(inputs, finopsIndex, taggingIndex)
+	d.processPreexistingIssues(inputs, finopsIndex, securityIndex, taggingIndex)
 	return inputs.PreexistingIssuesSentence
 }
 
@@ -34,15 +35,30 @@ func baseData() Data {
 	return Data{CloudEnabled: true, OrgSlug: "org", RepoID: "repo", BaseBranchName: "main"}
 }
 
-func TestPreexisting_ExcludesSecurity(t *testing.T) {
+func TestPreexisting_IncludesSecurity(t *testing.T) {
 	d := baseData()
-	// Only a security policy has base-branch failures: the dashboard excludes
-	// security from the pre-existing count, so no sentence should render.
+	// Cloud-security policies are stored alongside FinOps policies and the
+	// dashboard counts them in its pre-existing total, so two still-failing
+	// security issues should render the sentence.
 	d.PreviousSecurityPolicyResults = []*provider.FinopsPolicyResult{finopsResult("sec", "x", "y")}
 	d.SecurityPolicyResults = []*provider.FinopsPolicyResult{finopsResult("sec", "x", "y")}
 
-	if got := preexistingSentence(d); got != "" {
-		t.Errorf("expected no sentence (security excluded), got %q", got)
+	if got := preexistingSentence(d); !strings.Contains(got, "2 pre-existing issues") {
+		t.Errorf("expected 2 pre-existing issues (security included), got %q", got)
+	}
+}
+
+func TestPreexisting_CombinesFinopsSecurityAndTagging(t *testing.T) {
+	d := baseData()
+	// 1 finops + 2 security + 1 external = 4 pre-existing, none resolved.
+	d.PreviousFinOpsPolicyResults = []*provider.FinopsPolicyResult{finopsResult("use", "r1")}
+	d.FinOpsPolicyResults = []*provider.FinopsPolicyResult{finopsResult("use", "r1")}
+	d.PreviousSecurityPolicyResults = []*provider.FinopsPolicyResult{finopsResult("sec", "s1", "s2")}
+	d.SecurityPolicyResults = []*provider.FinopsPolicyResult{finopsResult("sec", "s1", "s2")}
+	d.ExternalPreExistingCount = 1
+
+	if got := preexistingSentence(d); !strings.Contains(got, "4 pre-existing issues") {
+		t.Errorf("expected 4 pre-existing issues (1 finops + 2 security + 1 external), got %q", got)
 	}
 }
 
