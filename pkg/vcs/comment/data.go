@@ -95,30 +95,22 @@ type Data struct {
 	TaggingPolicyResults         []event.TaggingPolicyResult
 	PreviousTaggingPolicyResults []event.TaggingPolicyResult
 
-	// PreExistingIgnoredCount is the number of base-branch FinOps/tagging issues
-	// the user has dismissed (ignored). These are filtered out of the policy
-	// results upstream, so they're supplied as a count and added back into the
-	// pre-existing-issues total to match the dashboard (newIssues + ignoredIssues).
-	//
-	// IMPORTANT: count dismissed issues for PR-comment policies only (those with
-	// IncludeInPullRequestComment / PRComment set), since the failing-resource
-	// term it's added to is scoped the same way (and so is the dashboard's
-	// ignoredIssues aggregate). Including dismissed issues from hidden policies
-	// here would inflate the total with issues the comment never counts.
-	PreExistingIgnoredCount int
-
 	// ExternalPreExistingCount is the number of base-branch pre-existing
-	// FinOps/tagging issues (new + ignored, PR-comment policies) for projects
-	// that were NOT re-run in this PR, supplied by the dashboard. The runner
-	// only computes Previous*PolicyResults (and PreExistingIgnoredCount) for the
-	// projects it re-ran, so without this term the pre-existing total would only
-	// reflect the changed projects rather than the whole repo. It is added to
-	// the pre-existing total alongside the re-run projects' counts.
+	// FinOps/tagging issues (PR-comment policies) for projects that were NOT
+	// re-run in this PR, supplied by the dashboard. The runner only computes
+	// Previous*PolicyResults for the projects it re-ran, so without this term the
+	// pre-existing total would only reflect the changed projects rather than the
+	// whole repo. It is added to the pre-existing total alongside the re-run
+	// projects' counts.
+	//
+	// The count matches the dashboard's pre-existing definition (newIssues +
+	// ignoredIssues): currently-failing, NON-dismissed resources on the base
+	// branch's latest run. Dismissed (excluded) issues are not counted on either
+	// side, so the totals reconcile.
 	//
 	// IMPORTANT: this must be summed over the NOT-re-run projects only. The
-	// re-run projects are already counted via Previous*PolicyResults +
-	// PreExistingIgnoredCount, so including their dashboard counts here would
-	// double-count them.
+	// re-run projects are already counted via Previous*PolicyResults, so
+	// including their dashboard counts here would double-count them.
 	ExternalPreExistingCount int
 
 	// GuardrailResults contains the aggregated guardrail results.
