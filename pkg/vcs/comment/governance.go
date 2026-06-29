@@ -302,7 +302,9 @@ func formatFinopsResourceLocation(data *Data, srcLink SourceLinker, resource *pr
 
 	if resource.ModulePath != "" && strings.Contains(resource.ModulePath, "://") {
 		resourceLink := resource.ModulePath
-		if resource.StartLine > 0 {
+		// Module-source URLs usually already carry their own #Lx-Ly anchor; only
+		// add a line anchor when none exists, to avoid a doubled "#L8-L11#L8".
+		if resource.StartLine > 0 && !strings.Contains(resourceLink, "#") {
 			resourceLink = fmt.Sprintf("%s#L%d", resourceLink, resource.StartLine)
 		}
 
@@ -361,7 +363,9 @@ func formatTagResourceLocation(data *Data, srcLink SourceLinker, resource event.
 
 	if resource.ModulePath != "" && strings.Contains(resource.ModulePath, "://") {
 		resourceLink := resource.ModulePath
-		if resource.Line > 0 {
+		// Module-source URLs usually already carry their own #Lx-Ly anchor; only
+		// add a line anchor when none exists, to avoid a doubled "#L8-L11#L8".
+		if resource.Line > 0 && !strings.Contains(resourceLink, "#") {
 			resourceLink = fmt.Sprintf("%s#L%d", resourceLink, resource.Line)
 		}
 
