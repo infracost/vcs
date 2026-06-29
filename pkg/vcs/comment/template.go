@@ -321,15 +321,18 @@ func (data *Data) processPreexistingIssues(inputs *Inputs, finopsIndex policyFai
 		data.OrgSlug, data.RepoID)
 	dashboardURL := fmt.Sprintf("https://dashboard.infracost.io/org/%s#leaderboard?utm_source=pr_comment&utm_content=org_leaderboard",
 		data.OrgSlug)
+	const engineerGuideURL = "https://www.infracost.io/docs/infracost_cloud/engineer_guide/"
 
 	issueStr := fmt.Sprintf("are also [%d pre-existing issues]", remaining)
+	fixStr := "Fix them"
 	if remaining == 1 {
 		issueStr = "is also [one pre-existing issue]"
+		fixStr = "Fix it"
 	}
 
 	inputs.PreexistingIssuesSentence = fmt.Sprintf(
-		"There %s(%s) in the `%s` branch. Fix some to climb your [org's leaderboard](%s) 🥇",
-		issueStr, repoURL, data.BaseBranchName, dashboardURL,
+		"There %s(%s) in `%s`. %s with [Claude, VSCode, etc.](%s) - and climb your [org's leaderboard](%s) 🥇",
+		issueStr, repoURL, data.BaseBranchName, fixStr, engineerGuideURL, dashboardURL,
 	)
 }
 
