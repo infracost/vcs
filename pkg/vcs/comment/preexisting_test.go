@@ -46,18 +46,6 @@ func TestPreexisting_ExcludesSecurity(t *testing.T) {
 	}
 }
 
-func TestPreexisting_AddsIgnoredCount(t *testing.T) {
-	d := baseData()
-	// 1 still-failing FinOps issue + 2 dismissed (ignored) = 3 pre-existing.
-	d.PreviousFinOpsPolicyResults = []*provider.FinopsPolicyResult{finopsResult("use", "r1")}
-	d.FinOpsPolicyResults = []*provider.FinopsPolicyResult{finopsResult("use", "r1")}
-	d.PreExistingIgnoredCount = 2
-
-	if got := preexistingSentence(d); !strings.Contains(got, "3 pre-existing issues") {
-		t.Errorf("expected 3 pre-existing issues, got %q", got)
-	}
-}
-
 func TestPreexisting_AddsExternalCount(t *testing.T) {
 	d := baseData()
 	// No projects re-run (no Previous* results), but the dashboard reports 5
@@ -71,15 +59,14 @@ func TestPreexisting_AddsExternalCount(t *testing.T) {
 
 func TestPreexisting_CombinesExternalWithRerun(t *testing.T) {
 	d := baseData()
-	// Re-run projects: 1 still-failing FinOps issue + 2 dismissed (ignored).
-	// Not-re-run projects (from dashboard): 4. Total 7, none resolved.
+	// Re-run projects: 1 still-failing FinOps issue. Not-re-run projects (from
+	// the dashboard): 4. Total 5, none resolved.
 	d.PreviousFinOpsPolicyResults = []*provider.FinopsPolicyResult{finopsResult("use", "r1")}
 	d.FinOpsPolicyResults = []*provider.FinopsPolicyResult{finopsResult("use", "r1")}
-	d.PreExistingIgnoredCount = 2
 	d.ExternalPreExistingCount = 4
 
-	if got := preexistingSentence(d); !strings.Contains(got, "7 pre-existing issues") {
-		t.Errorf("expected 7 pre-existing issues (1 + 2 ignored + 4 external), got %q", got)
+	if got := preexistingSentence(d); !strings.Contains(got, "5 pre-existing issues") {
+		t.Errorf("expected 5 pre-existing issues (1 re-run + 4 external), got %q", got)
 	}
 }
 
