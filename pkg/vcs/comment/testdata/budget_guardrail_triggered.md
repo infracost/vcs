@@ -59,7 +59,7 @@
   </tbody>
 </table>
 <details open>
-  <summary><b>Monthly estimate increased by $400 📈</b> </summary>
+  <summary><b>Monthly estimate increased by $400 📈</b></summary>
   <br/>
 
 <table>
@@ -109,8 +109,6 @@ No cloud resources were detected
   </details>
 
 </details>
-
-<hr/>
 
 <hr/>
 

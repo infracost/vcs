@@ -63,7 +63,7 @@ This pull request is aligned with your company's FinOps policies and the Well-Ar
   </tbody>
 </table>
 <details >
-  <summary><b>Monthly estimate increased by $200 📈</b> </summary>
+  <summary><b>Monthly estimate increased by $200 📈</b></summary>
   <br/>
 
 <table>

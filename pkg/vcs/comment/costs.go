@@ -104,7 +104,7 @@ func (data *Data) calculateMetadataHeaders(inputs *Inputs) {
 func (data *Data) usageCostsMessage() string {
 	cloudSettingsStr := "Infracost Cloud settings"
 	if data.CloudEnabled && data.OrgSlug != "" {
-		cloudSettingsStr = fmt.Sprintf("[Infracost Cloud settings](https://dashboard.infracost.io/org/%s/settings)", data.OrgSlug)
+		cloudSettingsStr = fmt.Sprintf("[Infracost Cloud settings](https://dashboard.infracost.io/org/%s/settings/usage-cost-defaults)", data.OrgSlug)
 	}
 	usageDocsStr := "[docs](https://www.infracost.io/docs/features/usage_based_resources/#infracost-usageyml)"
 

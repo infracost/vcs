@@ -288,13 +288,22 @@ func formatFinopsResourceLocation(data *Data, srcLink SourceLinker, resource *pr
 		return formattedAddress
 	}
 
-	if resource.ModulePath != "" {
+	// The path is already an absolute URL (e.g. a remote/registry module blob URL
+	// that may already carry its own #Lx-Ly anchor). Use it verbatim rather than
+	// prepending the repo blob prefix; only add a line anchor when none exists, to
+	// avoid a doubled anchor. Mirrors the dashboard's path.includes('://') branch.
+	if strings.Contains(resource.Path, "://") {
+		link := resource.Path
+		if resource.StartLine > 0 && !strings.Contains(link, "#") {
+			link = fmt.Sprintf("%s#L%d", link, resource.StartLine)
+		}
+		return fmt.Sprintf("resource [%s](%s)", address, link)
+	}
+
+	if resource.ModulePath != "" && strings.Contains(resource.ModulePath, "://") {
 		resourceLink := resource.ModulePath
 		if resource.StartLine > 0 {
 			resourceLink = fmt.Sprintf("%s#L%d", resourceLink, resource.StartLine)
-		}
-		if !strings.Contains(resourceLink, "://") && !strings.HasPrefix(resourceLink, ".") {
-			resourceLink = "https://" + resourceLink
 		}
 
 		parts := strings.SplitN(address, ".", 3)
@@ -338,13 +347,22 @@ func formatTagResourceLocation(data *Data, srcLink SourceLinker, resource event.
 		return formattedAddress
 	}
 
-	if resource.ModulePath != "" {
+	// The path is already an absolute URL (e.g. a remote/registry module blob URL
+	// that may already carry its own #Lx-Ly anchor). Use it verbatim rather than
+	// prepending the repo blob prefix; only add a line anchor when none exists, to
+	// avoid a doubled anchor. Mirrors the dashboard's path.includes('://') branch.
+	if strings.Contains(resource.Path, "://") {
+		link := resource.Path
+		if resource.Line > 0 && !strings.Contains(link, "#") {
+			link = fmt.Sprintf("%s#L%d", link, resource.Line)
+		}
+		return fmt.Sprintf("resource [%s](%s)", resource.Address, link)
+	}
+
+	if resource.ModulePath != "" && strings.Contains(resource.ModulePath, "://") {
 		resourceLink := resource.ModulePath
 		if resource.Line > 0 {
 			resourceLink = fmt.Sprintf("%s#L%d", resourceLink, resource.Line)
-		}
-		if !strings.Contains(resourceLink, "://") && !strings.HasPrefix(resourceLink, ".") {
-			resourceLink = "https://" + resourceLink
 		}
 
 		// Split address into module part (first two segments) and resource part
@@ -737,7 +755,7 @@ func formatPotentialSavings(monthlySavings *rat.Rat, currency string) string {
 		return ""
 	}
 
-	return fmt.Sprintf("save %s%s/year", currencySymbol(currency), yearlySavings.StringFixed(0))
+	return fmt.Sprintf("save %s/year", formatCost(yearlySavings, currency))
 }
 
 // formatCarbonWithExample formats CO2 savings with a real-world comparison.

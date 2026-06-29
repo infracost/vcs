@@ -81,8 +81,6 @@ Key: * usage cost, ~ changed, + added, - removed
 
 <hr/>
 
-<hr/>
-
 ![Infracost Dev](https://img.shields.io/badge/Infracost-Dev-db2777?labelColor=000)
 
 **Let your coding agent remediate these.** Infracost Dev gives Cursor, Claude Code and Copilot your FinOps policies and live cloud pricing — so the next PR ships clean.
