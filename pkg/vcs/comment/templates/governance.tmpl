@@ -27,9 +27,10 @@
   * {{ . }}
 {{- end }}
 {{- if .ProjectNamesLabel }}
-    in {{ .ProjectNamesLabel }}
+
+in {{ .ProjectNamesLabel }}
 {{- end }}
-{{- end }}
+{{ end -}}
 </td></tr>
 {{ end -}}
 {{ if gt .TruncatedIssues 0 -}}
