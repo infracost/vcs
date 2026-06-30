@@ -3,6 +3,7 @@ package comment
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -699,8 +700,15 @@ func formatProjectNamesLabel(names []string) string {
 		return ""
 	}
 
-	escaped := make([]string, len(names))
-	for i, name := range names {
+	// Sort alphabetically to match the dashboard, which sorts project names
+	// before rendering the "in projects …" label (see finopsPolicies.ts and
+	// tagPolicies/index.ts). The runner unions them in project-iteration order,
+	// so sort here to keep the label stable and dashboard-aligned.
+	sorted := append([]string(nil), names...)
+	sort.Strings(sorted)
+
+	escaped := make([]string, len(sorted))
+	for i, name := range sorted {
 		escaped[i] = escapeAndFormatCode(name)
 	}
 
