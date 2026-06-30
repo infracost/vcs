@@ -1,6 +1,6 @@
 <h3>💰 Infracost report</h3>
 
-<p>Consider fixing this issue, it doesn't align with your company's FinOps policies & the Well-Architected Framework. <b>Add a PR comment with <code>@infracost help</code> to see how you can dismiss or snooze issues and unblock your PR.</b></p>
+<p>Consider fixing these issues, they don't align with your company's FinOps policies & the Well-Architected Framework. <b>Add a PR comment with <code>@infracost help</code> to see how you can dismiss or snooze issues and unblock your PR.</b></p>
 
 <table>
   <tr><td colspan="2" width="1000px">FinOps policies</td></tr>
@@ -20,7 +20,12 @@ resource [aws_instance.web](https://github.com/my-org/my-repo/blob/def456/main.t
   * This instance runs 24/7 and could benefit from a reserved instance
     * 🔧 [Fix in your IDE](https://cost.dev/?utm_source=pr_comment&utm_content=fix_in_ide) — or ask your agent to apply it with Infracost Dev
 
-in project `my-project`
+in projects `prod`, `staging`
+
+  * This instance is oversized for its workload
+    * 🔧 [Fix in your IDE](https://cost.dev/?utm_source=pr_comment&utm_content=fix_in_ide) — or ask your agent to apply it with Infracost Dev
+
+in project `dev`
 </td></tr>
 
   </table>

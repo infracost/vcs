@@ -188,6 +188,53 @@ func TestRender(t *testing.T) {
 			goldenFile: "governance_finops.md",
 		},
 		{
+			// Same resource address failing the same policy with two distinct
+			// issue-sets across different projects. Should render one resource
+			// header with a per-issue-set "in projects" sub-group (matching the
+			// dashboard), not two separate headers.
+			name:           "governance_finops_grouped",
+			maxCommentSize: 65000,
+			data: Data{
+				SupportsBotCommands: true,
+				Currency:            "USD",
+				TotalMonthlyCost:    rat.New(100),
+				RepoURL:             "https://github.com/my-org/my-repo",
+				CommitSHA:           "def456",
+				FinOpsPolicyResults: []*provider.FinopsPolicyResult{
+					{
+						PolicyName:                  "Use reserved instances",
+						PolicySlug:                  "use-reserved-instances",
+						PolicyMessage:               "Consider using reserved instances for long-running workloads.",
+						BlockPullRequest:            false,
+						IncludeInPullRequestComment: true,
+						FailingResources: []*provider.FinopsPolicyFailingResource{
+							{
+								Id:           "aws_instance.web",
+								CauseAddress: "aws_instance.web",
+								Path:         "main.tf",
+								StartLine:    15,
+								ProjectNames: []string{"prod", "staging"},
+								Issues: []*provider.FinopsResourceIssue{
+									{Description: "This instance runs 24/7 and could benefit from a reserved instance"},
+								},
+							},
+							{
+								Id:           "aws_instance.web",
+								CauseAddress: "aws_instance.web",
+								Path:         "main.tf",
+								StartLine:    15,
+								ProjectNames: []string{"dev"},
+								Issues: []*provider.FinopsResourceIssue{
+									{Description: "This instance is oversized for its workload"},
+								},
+							},
+						},
+					},
+				},
+			},
+			goldenFile: "governance_finops_grouped.md",
+		},
+		{
 			name:           "fixed_issues",
 			maxCommentSize: 140000,
 			data: Data{

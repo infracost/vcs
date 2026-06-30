@@ -74,6 +74,13 @@ func (data *Data) processPolicyResults(inputs *Inputs, title string, results []*
 		prevFailing := index.previous[result.PolicySlug]
 		totalIssues := 0
 
+		// Group failing-resource entries by address. The runner emits one entry
+		// per (address, issue-set), so a resource that fails with different issues
+		// across projects has multiple entries; we render a single resource header
+		// with one "in projects …" sub-group per issue-set, matching the dashboard.
+		var addrOrder []string
+		byAddr := map[string]*GovernanceResource{}
+
 		for _, resource := range result.FailingResources {
 			// Skip resources that were already failing before this PR.
 			if prevFailing[resource.Id] {
@@ -82,30 +89,33 @@ func (data *Data) processPolicyResults(inputs *Inputs, title string, results []*
 
 			totalIssues += len(resource.Issues)
 
-			if len(entry.Resources) >= GovernanceResourceLimit {
-				continue // count but don't render
+			gr, ok := byAddr[resource.CauseAddress]
+			if !ok {
+				if len(byAddr) >= GovernanceResourceLimit {
+					continue // new resource beyond the limit: count issues, don't render
+				}
+				gr = &GovernanceResource{Location: formatFinopsResourceLocation(data, srcLink, resource)}
+				byAddr[resource.CauseAddress] = gr
+				addrOrder = append(addrOrder, resource.CauseAddress)
 			}
 
-			var projectIssues []GovernanceProjectIssues
+			issues := make([]string, 0, len(resource.Issues))
 			for _, issue := range resource.Issues {
-				description := formatFinopsIssueDescription(
+				issues = append(issues, formatFinopsIssueDescription(
 					issue, data.Currency, data.EnableEnvironmentalMetrics,
-				)
-				projectIssues = append(projectIssues, GovernanceProjectIssues{
-					Issues:            []string{description},
-					ProjectNamesLabel: formatProjectNamesLabel(resource.ProjectNames),
-				})
+				))
 			}
-
-			entry.Resources = append(entry.Resources, GovernanceResource{
-				Location:      formatFinopsResourceLocation(data, srcLink, resource),
-				ProjectIssues: projectIssues,
+			gr.ProjectIssues = append(gr.ProjectIssues, GovernanceProjectIssues{
+				Issues:            issues,
+				ProjectNamesLabel: formatProjectNamesLabel(resource.ProjectNames),
 			})
 		}
 
 		shownIssues := 0
-		for _, r := range entry.Resources {
-			for _, pi := range r.ProjectIssues {
+		for _, addr := range addrOrder {
+			gr := byAddr[addr]
+			entry.Resources = append(entry.Resources, *gr)
+			for _, pi := range gr.ProjectIssues {
 				shownIssues += len(pi.Issues)
 			}
 		}
@@ -155,6 +165,11 @@ func (data *Data) processTaggingPolicyResults(inputs *Inputs, index taggingFailu
 		prevFailing := index.previous[result.TagPolicyID]
 		totalIssues := 0
 
+		// Group by address into one resource header with a sub-group per issue-set
+		// (see processPolicyResults).
+		var addrOrder []string
+		byAddr := map[string]*GovernanceResource{}
+
 		for _, resource := range result.FailingResources {
 			if prevFailing[resource.Address] {
 				continue
@@ -163,24 +178,26 @@ func (data *Data) processTaggingPolicyResults(inputs *Inputs, index taggingFailu
 			issues := data.formatTagIssues(srcLink, resource)
 			totalIssues += len(issues)
 
-			if len(entry.Resources) >= GovernanceResourceLimit {
-				continue
+			gr, ok := byAddr[resource.Address]
+			if !ok {
+				if len(byAddr) >= GovernanceResourceLimit {
+					continue
+				}
+				gr = &GovernanceResource{Location: formatTagResourceLocation(data, srcLink, resource)}
+				byAddr[resource.Address] = gr
+				addrOrder = append(addrOrder, resource.Address)
 			}
-
-			entry.Resources = append(entry.Resources, GovernanceResource{
-				Location: formatTagResourceLocation(data, srcLink, resource),
-				ProjectIssues: []GovernanceProjectIssues{
-					{
-						Issues:            issues,
-						ProjectNamesLabel: formatProjectNamesLabel(resource.ProjectNames),
-					},
-				},
+			gr.ProjectIssues = append(gr.ProjectIssues, GovernanceProjectIssues{
+				Issues:            issues,
+				ProjectNamesLabel: formatProjectNamesLabel(resource.ProjectNames),
 			})
 		}
 
 		shownIssues := 0
-		for _, r := range entry.Resources {
-			for _, pi := range r.ProjectIssues {
+		for _, addr := range addrOrder {
+			gr := byAddr[addr]
+			entry.Resources = append(entry.Resources, *gr)
+			for _, pi := range gr.ProjectIssues {
 				shownIssues += len(pi.Issues)
 			}
 		}
