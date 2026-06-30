@@ -5,9 +5,9 @@
 
 <ul>
 <li><b>broken-project</b></li>
-<pre>HCL parse error: Failed to parse: invalid HCL</pre>
+<pre>Failed to parse: invalid HCL</pre>
 <li><b>another-broken-project</b></li>
-<pre>Failed to load module: Module not found: ./modules/vpc, Invalid Terraform configuration: Provider error: timeout</pre>
+<pre>Module not found: ./modules/vpc, Provider error: timeout</pre>
 </ul>
 <hr/>
 
