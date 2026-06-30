@@ -933,7 +933,7 @@ func TestRender(t *testing.T) {
 			goldenPath := filepath.Join("testdata", tt.goldenFile)
 
 			if *update {
-				if err := os.WriteFile(goldenPath, []byte(got), 0644); err != nil {
+				if err := os.WriteFile(goldenPath, []byte(got), 0o644); err != nil {
 					t.Fatalf("failed to update golden file: %v", err)
 				}
 				return

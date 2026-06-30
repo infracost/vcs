@@ -24,7 +24,7 @@ func (data *Data) processProjectErrors(inputs *Inputs) {
 		var errors []string
 		for _, diag := range project.Diagnostics {
 			if diag.Critical {
-				errors = append(errors, truncateMessage(diag.FormatMessage(), maxErrorMessageLength))
+				errors = append(errors, truncateMessage(diag.Error, maxErrorMessageLength))
 			}
 		}
 		if len(errors) == 0 {
