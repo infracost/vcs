@@ -318,13 +318,16 @@ func (g *GitLab) callUpdateComment(ctx context.Context, c gitlabComment, body st
 		} `graphql:"updateNote(input: $input)"`
 	}
 
-	type updateNoteInput struct {
+	// NOTE: the struct name is significant. shurcooL/graphql derives the GraphQL
+	// input type name from the Go type name verbatim, so it must match GitLab's
+	// schema type (UpdateNoteInput) exactly, including case.
+	type UpdateNoteInput struct {
 		ID   graphql.ID     `json:"id"`
 		Body graphql.String `json:"body"`
 	}
 
 	variables := map[string]any{
-		"input": updateNoteInput{
+		"input": UpdateNoteInput{
 			ID:   graphql.String(c.id),
 			Body: graphql.String(body),
 		},
@@ -340,12 +343,14 @@ func (g *GitLab) callDeleteComment(ctx context.Context, c gitlabComment) error {
 		} `graphql:"destroyNote(input: $input)"`
 	}
 
-	type destroyNoteInput struct {
+	// NOTE: the struct name is significant, see callUpdateComment. Must match
+	// GitLab's schema type (DestroyNoteInput) exactly, including case.
+	type DestroyNoteInput struct {
 		ID graphql.ID `json:"id"`
 	}
 
 	variables := map[string]any{
-		"input": destroyNoteInput{ID: graphql.String(c.id)},
+		"input": DestroyNoteInput{ID: graphql.String(c.id)},
 	}
 
 	return g.recorder.WrapError(g.graphqlClient.Mutate(ctx, &m, variables))
