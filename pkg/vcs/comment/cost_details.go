@@ -485,7 +485,7 @@ func formatErroredProject(pr ProjectResult) string {
 		}
 	}
 	if omitted > 0 {
-		b.WriteString(fmt.Sprintf(" … and %d more error(s).\n", omitted))
+		fmt.Fprintf(&b, " … and %d more error(s).\n", omitted)
 	}
 	return b.String()
 }
