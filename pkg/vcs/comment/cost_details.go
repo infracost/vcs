@@ -87,10 +87,26 @@ func (data *Data) processProjectCostDetails(inputs *Inputs) {
 	}
 
 	if len(erroredProjects) > 0 {
-		for _, project := range erroredProjects {
-			parts = append(parts, projectTitle(project))
-			parts = append(parts, formatErroredProject(project))
-			parts = append(parts, "\n"+separator)
+		var erroredBytes int
+		var omitted int
+		for i, project := range erroredProjects {
+			// Defence in depth: even with each message individually capped, a run
+			// with many errored projects could produce a huge section that the
+			// truncation pass then has to churn through. Stop once the section
+			// exceeds its budget and note how many projects were left out.
+			if erroredBytes > maxErroredProjectsSectionBytes {
+				omitted = len(erroredProjects) - i
+				break
+			}
+			title := projectTitle(project)
+			body := formatErroredProject(project)
+			tail := "\n" + separator
+			erroredBytes += len(title) + len(body) + len(tail)
+			parts = append(parts, title, body, tail)
+		}
+		if omitted > 0 {
+			parts = append(parts, fmt.Sprintf("… and %d more project(s) with errors (output truncated).\n", omitted))
+			parts = append(parts, separator)
 		}
 	}
 
@@ -413,23 +429,65 @@ func formatResourceCounts(counts map[string]int) string {
 	return msg
 }
 
+const (
+	// maxErroredDiagnosticBytes caps a single critical diagnostic message before
+	// it is rendered. Diagnostic errors (e.g. a Terraform HCL parse failure) can
+	// be many megabytes; without a cap, formatErroredProject's per-piece
+	// rendering degrades to O(n^2) and comment generation stalls indefinitely.
+	maxErroredDiagnosticBytes = 4096
+
+	// maxErroredIndentDepth caps the progressive indent applied to each ": "
+	// separated piece, so a message containing a large number of separators
+	// can't amplify into an enormous string.
+	maxErroredIndentDepth = 8
+
+	// maxErroredProjectsSectionBytes caps the combined size of the errored
+	// projects section. The whole section is built before renderWithTruncation
+	// runs, so this bounds the work regardless of how many projects errored.
+	maxErroredProjectsSectionBytes = 32 * 1024
+
+	// maxErroredDiagnosticsPerProject caps how many critical diagnostics are
+	// rendered for a single project; the rest are summarised as a count.
+	maxErroredDiagnosticsPerProject = 10
+)
+
 func formatErroredProject(pr ProjectResult) string {
-	s := "Errors:\n"
+	var b strings.Builder
+	b.WriteString("Errors:\n")
+	var shown int
+	var omitted int
 	for _, diag := range pr.Diagnostics {
 		if !diag.Critical {
 			continue
 		}
-		pieces := strings.Split(diag.FormatMessage(), ": ")
+		if shown >= maxErroredDiagnosticsPerProject {
+			omitted++
+			continue
+		}
+		shown++
+		msg := diag.FormatMessage()
+		if len(msg) > maxErroredDiagnosticBytes {
+			msg = prefixWithin(msg, maxErroredDiagnosticBytes, SizeUnitBytes) + "…"
+		}
+		pieces := strings.Split(msg, ": ")
 		for x, piece := range pieces {
-			s += strings.Repeat(" ", x+1) + piece
+			indent := x + 1
+			if indent > maxErroredIndentDepth {
+				indent = maxErroredIndentDepth
+			}
+			b.WriteString(strings.Repeat(" ", indent))
+			b.WriteString(piece)
 			if x == len(pieces)-1 {
-				s += "\n"
+				b.WriteString("\n")
 			} else {
-				s += ":\n"
+				b.WriteString(":\n")
 			}
 		}
 	}
-	return s
+	if omitted > 0 {
+		fmt.Fprintf(&b, " … and %d more error(s).\n", omitted)
+	}
+	return b.String()
 }
 
 func sortBreakdownResources(resources []BreakdownResource) {
