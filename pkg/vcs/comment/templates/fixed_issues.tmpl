@@ -2,7 +2,7 @@
 <details><summary>🟢 {{ .FixedIssuesSentence }}</summary>
 
 {{ range .FixedIssueCounts -}}
-- {{ .PolicyName }} `{{ .FixedIssuesLabel }}`
+- {{ .PolicyName | html }} {{ .FixedIssuesLabel | mdCode }}
 {{ end -}}
 {{ if .FixedIssuesTruncated -}}
 - ...and {{ .FixedIssuesTruncated }} more {{ if eq .FixedIssuesTruncated 1 }}issue{{ else }}issues{{ end }}

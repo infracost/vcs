@@ -43,7 +43,15 @@ var templateFS embed.FS
 // or replace with their own. It renders HTML-flavoured Markdown suitable for
 // most platforms (GitHub, GitLab, Azure Repos).
 var DefaultTemplate = template.Must(
-	template.New("comment.tmpl").ParseFS(templateFS, "templates/*.tmpl"),
+	template.New("comment.tmpl").
+		Funcs(template.FuncMap{
+			// mdCode renders a user-controlled value as an injection-safe inline
+			// code span, for values shown as code in a Markdown context. Values
+			// rendered inside raw-HTML blocks (<td>, <pre>, <b>) use the built-in
+			// `html` function instead, which is the correct escaping there.
+			"mdCode": escapeAndFormatCode,
+		}).
+		ParseFS(templateFS, "templates/*.tmpl"),
 )
 
 // truncationBuffer is reserved inside maxCommentSize to cover both the
