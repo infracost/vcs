@@ -720,9 +720,40 @@ func formatProjectNamesLabel(names []string) string {
 	return fmt.Sprintf("%s %s", noun, strings.Join(escaped, ", "))
 }
 
-// escapeAndFormatCode wraps a string in backticks for inline code display.
+// escapeAndFormatCode renders s as an inline code span that is safe against
+// Markdown injection. Values passed here originate from user-controlled IaC
+// (tag keys and values, attribute names, etc.) and are rendered into PR
+// comments, so a crafted value must not be able to break out of the code span
+// and inject links, images, or other live Markdown.
+//
+// It picks a backtick fence one longer than the longest run of backticks in s
+// and strips newlines (a code span cannot span lines). For ordinary values
+// with no backticks the output is the usual "`" + s + "`".
 func escapeAndFormatCode(s string) string {
-	return "`" + s + "`"
+	// Code spans cannot contain line endings.
+	s = strings.NewReplacer("\r\n", " ", "\n", " ", "\r", " ").Replace(s)
+
+	longest, current := 0, 0
+	for _, r := range s {
+		if r == '`' {
+			current++
+			if current > longest {
+				longest = current
+			}
+		} else {
+			current = 0
+		}
+	}
+	fence := strings.Repeat("`", longest+1)
+
+	// If the content starts or ends with a backtick, pad with a space so the
+	// boundary is not read as part of the fence; the renderer strips a single
+	// leading/trailing space.
+	if strings.HasPrefix(s, "`") || strings.HasSuffix(s, "`") {
+		s = " " + s + " "
+	}
+
+	return fence + s + fence
 }
 
 const (
