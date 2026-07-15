@@ -5,8 +5,8 @@
 
 <ul>
 {{- range .ProjectErrors }}
-<li><b>{{ .Name }}</b></li>
-<pre>{{ .Error }}</pre>
+<li><b>{{ .Name | html }}</b></li>
+<pre>{{ .Error | html }}</pre>
 {{- end }}
 </ul>
 <hr/>

@@ -18,12 +18,12 @@
   <tbody>
   {{- range .CostTableEntries }}
     <tr>
-      <td>{{ .ProjectName }}</td>
+      <td>{{ .ProjectName | html }}</td>
       {{- if $.ShowModulePath }}
-      <td>{{ .ModulePath }}</td>
+      <td>{{ .ModulePath | html }}</td>
       {{- end }}
       {{- if $.ShowWorkspace }}
-      <td>{{ .Workspace }}</td>
+      <td>{{ .Workspace | html }}</td>
       {{- end }}
       <td align="right">{{ .BaselineCostChange }}</td>
       <td align="right">{{ .UsageCostChange }}</td>
