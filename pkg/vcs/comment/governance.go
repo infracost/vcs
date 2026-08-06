@@ -3,6 +3,7 @@ package comment
 import (
 	"fmt"
 	"math"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -315,7 +316,7 @@ func formatFinopsResourceLocation(data *Data, srcLink SourceLinker, resource *pr
 		if resource.StartLine > 0 && !strings.Contains(link, "#") {
 			link = fmt.Sprintf("%s#L%d", link, resource.StartLine)
 		}
-		return fmt.Sprintf("resource [%s](%s)", address, link)
+		return fmt.Sprintf("resource %s", formatMarkdownLink(address, link))
 	}
 
 	if resource.ModulePath != "" && strings.Contains(resource.ModulePath, "://") {
@@ -337,8 +338,8 @@ func formatFinopsResourceLocation(data *Data, srcLink SourceLinker, resource *pr
 		}
 
 		moduleLink := buildSourceLink(srcLink, data.RepoURL, data.CommitSHA, resource.ModuleCallPath, int(resource.ModuleCallStartLine))
-		return fmt.Sprintf("resource [%s](%s) provisioned by module [%s](%s)",
-			resourceAddress, resourceLink, moduleAddress, moduleLink)
+		return fmt.Sprintf("resource %s provisioned by module %s",
+			formatMarkdownLink(resourceAddress, resourceLink), formatMarkdownLink(moduleAddress, moduleLink))
 	}
 
 	if strings.HasPrefix(resource.Path, ".infracost") || strings.HasPrefix(resource.Path, "/tmp") {
@@ -347,7 +348,7 @@ func formatFinopsResourceLocation(data *Data, srcLink SourceLinker, resource *pr
 
 	if data.CommitSHA != "" && data.RepoURL != "" {
 		link := buildSourceLink(srcLink, data.RepoURL, data.CommitSHA, resource.Path, int(resource.StartLine))
-		return fmt.Sprintf("resource [%s](%s)", address, link)
+		return fmt.Sprintf("resource %s", formatMarkdownLink(address, link))
 	}
 
 	changeLine := resource.Path
@@ -376,7 +377,7 @@ func formatTagResourceLocation(data *Data, srcLink SourceLinker, resource event.
 		if resource.Line > 0 && !strings.Contains(link, "#") {
 			link = fmt.Sprintf("%s#L%d", link, resource.Line)
 		}
-		return fmt.Sprintf("resource [%s](%s)", resource.Address, link)
+		return fmt.Sprintf("resource %s", formatMarkdownLink(resource.Address, link))
 	}
 
 	if resource.ModulePath != "" && strings.Contains(resource.ModulePath, "://") {
@@ -399,8 +400,8 @@ func formatTagResourceLocation(data *Data, srcLink SourceLinker, resource event.
 		}
 
 		moduleLink := buildSourceLink(srcLink, data.RepoURL, data.CommitSHA, resource.ModuleCallPath, resource.ModuleCallLine)
-		return fmt.Sprintf("resource [%s](%s) provisioned by module [%s](%s)",
-			resourceAddress, resourceLink, moduleAddress, moduleLink)
+		return fmt.Sprintf("resource %s provisioned by module %s",
+			formatMarkdownLink(resourceAddress, resourceLink), formatMarkdownLink(moduleAddress, moduleLink))
 	}
 
 	if strings.HasPrefix(resource.Path, ".infracost") || strings.HasPrefix(resource.Path, "/tmp") {
@@ -409,7 +410,7 @@ func formatTagResourceLocation(data *Data, srcLink SourceLinker, resource event.
 
 	if data.CommitSHA != "" && data.RepoURL != "" {
 		link := buildSourceLink(srcLink, data.RepoURL, data.CommitSHA, resource.Path, resource.Line)
-		return fmt.Sprintf("resource [%s](%s)", resource.Address, link)
+		return fmt.Sprintf("resource %s", formatMarkdownLink(resource.Address, link))
 	}
 
 	changeLine := resource.Path
@@ -754,6 +755,49 @@ func escapeAndFormatCode(s string) string {
 	}
 
 	return fence + s + fence
+}
+
+// formatMarkdownLink renders "[`text`](url)" with both halves hardened against
+// Markdown injection: the text is escaped as a code span (same treatment as
+// the non-link branches, see escapeAndFormatCode) and the URL is sanitized by
+// sanitizeLinkURL. Both values originate from user-controlled IaC (resource
+// addresses, module source URLs), so neither may be interpolated raw. When the
+// URL does not survive sanitization the text is rendered without a link.
+// [FIX-549]
+func formatMarkdownLink(text, linkURL string) string {
+	safe := sanitizeLinkURL(linkURL)
+	if safe == "" {
+		return escapeAndFormatCode(text)
+	}
+	return fmt.Sprintf("[%s](%s)", escapeAndFormatCode(text), safe)
+}
+
+// sanitizeLinkURL returns linkURL made safe for interpolation into the (...)
+// part of a Markdown link, or "" when it is not an absolute http(s) URL.
+// Characters that could terminate the link early or smuggle Markdown/HTML
+// through the renderer are percent-encoded (net/url leaves some of them alone
+// because they are legal URL sub-delimiters).
+func sanitizeLinkURL(linkURL string) string {
+	u, err := url.Parse(strings.TrimSpace(linkURL))
+	if err != nil {
+		return ""
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return ""
+	}
+	return strings.NewReplacer(
+		"(", "%28",
+		")", "%29",
+		"[", "%5B",
+		"]", "%5D",
+		"<", "%3C",
+		">", "%3E",
+		"`", "%60",
+		`"`, "%22",
+		"'", "%27",
+		`\`, "%5C",
+		" ", "%20",
+	).Replace(u.String())
 }
 
 const (
