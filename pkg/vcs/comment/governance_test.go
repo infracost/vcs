@@ -50,7 +50,7 @@ func TestFormatFinopsResourceLocation(t *testing.T) {
 			resource: &provider.FinopsPolicyFailingResource{
 				CauseAddress: "aws_instance.web", Path: "dev/main.tf", StartLine: 9,
 			},
-			want: "resource [aws_instance.web](https://github.com/my-org/my-repo/blob/abc123/dev/main.tf#L9)",
+			want: "resource [`aws_instance.web`](https://github.com/my-org/my-repo/blob/abc123/dev/main.tf#L9)",
 		},
 		{
 			// Remote-module path is already an absolute URL carrying its own
@@ -61,14 +61,14 @@ func TestFormatFinopsResourceLocation(t *testing.T) {
 				Path:         "https://github.com/infracost/terraform-private-module-example/blob/HEAD/main.tf#L5-L135",
 				StartLine:    5,
 			},
-			want: "resource [module.ec2.aws_instance.this](https://github.com/infracost/terraform-private-module-example/blob/HEAD/main.tf#L5-L135)",
+			want: "resource [`module.ec2.aws_instance.this`](https://github.com/infracost/terraform-private-module-example/blob/HEAD/main.tf#L5-L135)",
 		},
 		{
 			name: "absolute url path without anchor gets single anchor",
 			resource: &provider.FinopsPolicyFailingResource{
 				CauseAddress: "aws_instance.web", Path: "https://example.com/main.tf", StartLine: 9,
 			},
-			want: "resource [aws_instance.web](https://example.com/main.tf#L9)",
+			want: "resource [`aws_instance.web`](https://example.com/main.tf#L9)",
 		},
 		{
 			// ModulePath without "://" must not take the remote-module branch.
@@ -76,7 +76,7 @@ func TestFormatFinopsResourceLocation(t *testing.T) {
 			resource: &provider.FinopsPolicyFailingResource{
 				CauseAddress: "aws_instance.web", Path: "dev/main.tf", ModulePath: "modules/ec2", StartLine: 9,
 			},
-			want: "resource [aws_instance.web](https://github.com/my-org/my-repo/blob/abc123/dev/main.tf#L9)",
+			want: "resource [`aws_instance.web`](https://github.com/my-org/my-repo/blob/abc123/dev/main.tf#L9)",
 		},
 		{
 			// Module-source URL already carries a #Lx-Ly anchor: don't append a second.
@@ -86,7 +86,7 @@ func TestFormatFinopsResourceLocation(t *testing.T) {
 				ModulePath:     "https://github.com/aws-ia/terraform-aws-control_tower_account_factory/blob/HEAD/modules/aft-feature-options/s3.tf#L8-L11",
 				ModuleCallPath: "module.aft", ModuleCallStartLine: 16, StartLine: 8,
 			},
-			want: "resource [aws_s3_bucket.this](https://github.com/aws-ia/terraform-aws-control_tower_account_factory/blob/HEAD/modules/aft-feature-options/s3.tf#L8-L11) provisioned by module [module.aft](https://github.com/my-org/my-repo/blob/abc123/module.aft#L16)",
+			want: "resource [`aws_s3_bucket.this`](https://github.com/aws-ia/terraform-aws-control_tower_account_factory/blob/HEAD/modules/aft-feature-options/s3.tf#L8-L11) provisioned by module [`module.aft`](https://github.com/my-org/my-repo/blob/abc123/module.aft#L16)",
 		},
 		{
 			// Module-source URL without an anchor gets a single one.
@@ -96,7 +96,7 @@ func TestFormatFinopsResourceLocation(t *testing.T) {
 				ModulePath:     "https://github.com/aws-ia/repo/blob/HEAD/s3.tf",
 				ModuleCallPath: "module.aft", ModuleCallStartLine: 16, StartLine: 8,
 			},
-			want: "resource [aws_s3_bucket.this](https://github.com/aws-ia/repo/blob/HEAD/s3.tf#L8) provisioned by module [module.aft](https://github.com/my-org/my-repo/blob/abc123/module.aft#L16)",
+			want: "resource [`aws_s3_bucket.this`](https://github.com/aws-ia/repo/blob/HEAD/s3.tf#L8) provisioned by module [`module.aft`](https://github.com/my-org/my-repo/blob/abc123/module.aft#L16)",
 		},
 	}
 
@@ -118,7 +118,7 @@ func TestFormatTagResourceLocation(t *testing.T) {
 		{
 			name:     "in-repo path gets blob link",
 			resource: event.TagPolicyResultResource{Address: "aws_instance.web", Path: "dev/main.tf", Line: 9},
-			want:     "resource [aws_instance.web](https://github.com/my-org/my-repo/blob/abc123/dev/main.tf#L9)",
+			want:     "resource [`aws_instance.web`](https://github.com/my-org/my-repo/blob/abc123/dev/main.tf#L9)",
 		},
 		{
 			name: "absolute url path with existing anchor",
@@ -127,7 +127,7 @@ func TestFormatTagResourceLocation(t *testing.T) {
 				Path:    "https://github.com/infracost/terraform-private-module-example/blob/HEAD/main.tf#L5-L135",
 				Line:    5,
 			},
-			want: "resource [module.ec2.aws_instance.this](https://github.com/infracost/terraform-private-module-example/blob/HEAD/main.tf#L5-L135)",
+			want: "resource [`module.ec2.aws_instance.this`](https://github.com/infracost/terraform-private-module-example/blob/HEAD/main.tf#L5-L135)",
 		},
 	}
 
