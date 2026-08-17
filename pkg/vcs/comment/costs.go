@@ -49,11 +49,37 @@ func (data *Data) buildCostTableEntries() []CostTableEntry {
 				project.PastTotalMonthlyCost, project.TotalMonthlyCost, data.Currency,
 				costChangeOpts{},
 			),
-			NewTotalCost: formatCost(project.TotalMonthlyCost, data.Currency),
+			NewTotalCost:       formatCost(project.TotalMonthlyCost, data.Currency),
+			absTotalCostChange: safeSub(project.TotalMonthlyCost, project.PastTotalMonthlyCost).Abs(),
 		})
 	}
 
+	// If at least one project changed cost, hide the projects whose cost did not
+	// change. When no project changed cost, keep them all so the table is not
+	// empty.
+	hasCostChange := false
+	for _, entry := range entries {
+		if !entry.absTotalCostChange.IsZero() {
+			hasCostChange = true
+			break
+		}
+	}
+	if hasCostChange {
+		changed := make([]CostTableEntry, 0, len(entries))
+		for _, entry := range entries {
+			if !entry.absTotalCostChange.IsZero() {
+				changed = append(changed, entry)
+			}
+		}
+		entries = changed
+	}
+
+	// Biggest changes first, falling back to alphabetical ordering for entries
+	// with an equal absolute cost change.
 	sort.Slice(entries, func(i, j int) bool {
+		if !entries[i].absTotalCostChange.Equals(entries[j].absTotalCostChange) {
+			return entries[i].absTotalCostChange.GreaterThan(entries[j].absTotalCostChange)
+		}
 		if entries[i].ProjectName != entries[j].ProjectName {
 			return entries[i].ProjectName < entries[j].ProjectName
 		}
@@ -130,8 +156,8 @@ func projectHasDiff(project ProjectResult) bool {
 
 // costChangeOpts controls formatting of cost change strings.
 type costChangeOpts struct {
-	skipPercent  bool
-	skipIfZero   bool
+	skipPercent   bool
+	skipIfZero    bool
 	skipPlusMinus bool
 }
 
