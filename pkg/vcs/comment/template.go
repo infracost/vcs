@@ -7,6 +7,8 @@ import (
 	"strings"
 	"text/template"
 	"unicode/utf8"
+
+	"github.com/infracost/go-proto/pkg/rat"
 )
 
 const (
@@ -541,6 +543,10 @@ type CostTableEntry struct {
 
 	// NewTotalCost is the formatted new monthly cost, e.g. "$560.00".
 	NewTotalCost string
+
+	// absTotalCostChange is the absolute total cost change, used to sort rows so
+	// the biggest changes show first. It is not rendered in the template.
+	absTotalCostChange *rat.Rat
 }
 
 type ProjectError struct {
