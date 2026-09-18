@@ -571,6 +571,32 @@ func renderCases() []renderTestCase {
 			goldenFile: "hide_dashboard_links.md",
 		},
 		{
+			// Six policies against the table's limit of five, so the truncated
+			// table would carry its "view all issues" run link.
+			name:           "hide_dashboard_links_truncated",
+			maxCommentSize: 65000,
+			data: Data{
+				SupportsBotCommands: true,
+				HideDashboardLinks:  true,
+				Currency:            "USD",
+				TotalMonthlyCost:    rat.New(300),
+				CloudEnabled:        true,
+				OrgSlug:             "my-org",
+				RepoID:              "repo-123",
+				RunID:               "run-456",
+				BaseBranchName:      "main",
+				FinOpsPolicyResults: []*provider.FinopsPolicyResult{
+					failingPolicy("use-graviton", "aws_instance.a"),
+					failingPolicy("use-reserved", "aws_instance.b"),
+					failingPolicy("use-gp3", "aws_instance.c"),
+					failingPolicy("right-size", "aws_instance.d"),
+					failingPolicy("drop-idle", "aws_instance.e"),
+					failingPolicy("use-spot", "aws_instance.f"),
+				},
+			},
+			goldenFile: "hide_dashboard_links_truncated.md",
+		},
+		{
 			name:           "governance_tagging",
 			maxCommentSize: 65000,
 			data: Data{
@@ -1048,6 +1074,25 @@ func renderCases() []renderTestCase {
 				},
 			},
 			goldenFile: "budget_multiple.md",
+		},
+	}
+}
+
+// failingPolicy is one policy with one failing resource, for cases needing more
+// policies than the table shows.
+func failingPolicy(slug, address string) *provider.FinopsPolicyResult {
+	return &provider.FinopsPolicyResult{
+		PolicyName:                  slug,
+		PolicySlug:                  slug,
+		IncludeInPullRequestComment: true,
+		FailingResources: []*provider.FinopsPolicyFailingResource{
+			{
+				Id:           address,
+				CauseAddress: address,
+				Issues: []*provider.FinopsResourceIssue{
+					{Description: "Switch to Graviton instance type", MonthlySavings: rat.New(50).Proto()},
+				},
+			},
 		},
 	}
 }

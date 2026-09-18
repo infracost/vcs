@@ -451,10 +451,11 @@ func (data *Data) processPreexistingIssues(inputs *Inputs, finopsIndex, security
 }
 
 // runURL returns the Infracost Cloud link to this run's dashboard page, or an
-// empty string when cloud is disabled or any required identifier is missing.
-// Callers should not render a dashboard link when this returns "".
+// empty string when cloud is disabled, any required identifier is missing, or
+// dashboard links are hidden. Callers should not render a dashboard link when
+// this returns "".
 func (data *Data) runURL() string {
-	if !data.CloudEnabled || data.OrgSlug == "" || data.RepoID == "" || data.RunID == "" {
+	if !data.CloudEnabled || data.OrgSlug == "" || data.RepoID == "" || data.RunID == "" || data.HideDashboardLinks {
 		return ""
 	}
 	return fmt.Sprintf(

@@ -60,7 +60,7 @@ data := comment.Data{
 |---|---|---|
 | `EnableEnvironmentalMetrics` | `bool` | Show carbon emissions in the comment. |
 | `NeverShowCostEstimate` | `bool` | Suppress the cost details section entirely. |
-| `HideDashboardLinks` | `bool` | Drop the lines linking to Infracost Cloud (pre-existing issues, usage costs footnote). |
+| `HideDashboardLinks` | `bool` | Drop everything linking to Infracost Cloud. |
 | `UsedUsageFile` | `bool` | Whether an `infracost-usage.yml` was used. |
 | `UsageAPIEnabled` | `bool` | Whether Infracost Cloud usage API estimates are enabled. |
 | `OrgSlug` | `string` | Organization slug for Infracost Cloud links. |
