@@ -232,19 +232,25 @@ func (b *Bitbucket) deleteAndNewComment(ctx context.Context, body string, validA
 		}
 	}
 
-	// A failed delete must not sink the post: a concurrent run may have removed
-	// the comment already, and the new report still has to land.
-	var deleteErrs []error
+	// Only a comment that is already gone is tolerated: a concurrent run
+	// deleting it is the expected race. Anything else (401, 403, 5xx) would
+	// leave the old comment up and duplicate the report.
 	for _, c := range comments {
-		if err := b.api.deleteComment(ctx, c); err != nil {
-			deleteErrs = append(deleteErrs, err)
+		if err := b.api.deleteComment(ctx, c); err != nil && !isNotFound(err) {
+			return vcs.PostResult{}, err
 		}
 	}
 
 	if _, err := b.api.createComment(ctx, body); err != nil {
-		return vcs.PostResult{}, errors.Join(append(deleteErrs, err)...)
+		return vcs.PostResult{}, err
 	}
 	return vcs.PostResult{Posted: true}, nil
+}
+
+// isNotFound reports whether err is a 404 from the Bitbucket API.
+func isNotFound(err error) bool {
+	var postErr *vcs.PostError
+	return errors.As(err, &postErr) && postErr.StatusCode == http.StatusNotFound
 }
 
 // footerValidAt reads the footer valid-at, ignoring a stamp further ahead of now

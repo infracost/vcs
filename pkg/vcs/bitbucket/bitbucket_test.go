@@ -816,3 +816,34 @@ func TestCheckRedirectRejectsSchemeDowngrade(t *testing.T) {
 		})
 	}
 }
+
+// A delete that fails for any reason other than "already gone" is fatal:
+// carrying on would post the new report alongside the old one.
+func TestDeleteAndNewFailsOnRealDeleteError(t *testing.T) {
+	var created bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			c := cloudComment{ID: 1}
+			c.Content.Raw = vcs.AddFooterTags("old", "infracost-comment", nil)
+			writeJSON(t, w, http.StatusOK, map[string]any{"values": []cloudComment{c}})
+		case http.MethodDelete:
+			w.WriteHeader(http.StatusForbidden)
+		case http.MethodPost:
+			created = true
+			writeJSON(t, w, http.StatusCreated, cloudComment{ID: 2})
+		}
+	}))
+	defer srv.Close()
+
+	res, err := cloudAt(t, srv.URL).PostComment(context.Background(), "new", vcs.BehaviorDeleteAndNew)
+	if err == nil {
+		t.Fatalf("PostComment() = %+v, nil error, want the 403 surfaced", res)
+	}
+	if created {
+		t.Error("PostComment() created a duplicate comment after the delete failed")
+	}
+	if res.Posted {
+		t.Error("PostComment() reported Posted with the old comment still up")
+	}
+}

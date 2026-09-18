@@ -115,6 +115,10 @@ func extractFooterTagValue(body, key string) (value string, ok bool) {
 // matched before splitting on "=", so a tag that itself contains "=" round-trips
 // instead of being read back as the text before its first "=".
 func lookupTag(content, key string) (value string, ok bool) {
+	// Parts are trimmed on the way out, so the key has to be too or a tag
+	// configured with surrounding whitespace could never be found again.
+	key = strings.TrimSpace(key)
+
 	for _, part := range strings.Split(content, ",") {
 		part = strings.TrimSpace(part)
 		if part == key {

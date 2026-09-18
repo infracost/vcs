@@ -273,3 +273,28 @@ func TestTagContainingEqualsRoundTrips(t *testing.T) {
 		})
 	}
 }
+
+// Parts are trimmed when read back, so a tag configured with surrounding
+// whitespace has to be findable with the same whitespace it was stored with.
+func TestTagWithSurroundingWhitespaceRoundTrips(t *testing.T) {
+	tests := []struct {
+		name string
+		add  func(string) string
+		has  func(string, string) bool
+	}{
+		{name: "markdown", add: func(tag string) string { return AddMarkdownTags("body", tag, nil) }, has: HasTagKey},
+		{name: "footer", add: func(tag string) string { return AddFooterTags("body", tag, nil) }, has: HasFooterTagKey},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body := tt.add(" infracost-comment ")
+			if !tt.has(body, " infracost-comment ") {
+				t.Errorf("tag not found in %q", body)
+			}
+			if !tt.has(body, "infracost-comment") {
+				t.Errorf("trimmed tag not found in %q", body)
+			}
+		})
+	}
+}
