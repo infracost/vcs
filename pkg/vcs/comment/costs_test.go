@@ -1,6 +1,7 @@
 package comment
 
 import (
+	"strings"
 	"testing"
 	"unicode/utf8"
 
@@ -128,5 +129,25 @@ func TestUsageCostsMessage_HiddenWhenDashboardLinksHidden(t *testing.T) {
 
 	if got := data.usageCostsMessage(); got != "" {
 		t.Errorf("expected no message, got %q", got)
+	}
+}
+
+func TestRunURL_EmptyWhenDashboardLinksHidden(t *testing.T) {
+	data := &Data{CloudEnabled: true, OrgSlug: "org", RepoID: "repo", RunID: "run", HideDashboardLinks: true}
+
+	if got := data.runURL(); got != "" {
+		t.Errorf("expected no URL, got %q", got)
+	}
+}
+
+func TestRepoCostsMessage_DropsDashboardLinkWhenHidden(t *testing.T) {
+	data := &Data{CloudEnabled: true, OrgSlug: "org", UsageAPIEnabled: true, UsedUsageFile: true, HideDashboardLinks: true}
+
+	got := data.repoCostsMessage()
+	if strings.Contains(got, "dashboard.infracost.io") {
+		t.Errorf("expected no dashboard link, got %q", got)
+	}
+	if !strings.Contains(got, "Infracost Cloud settings") {
+		t.Errorf("expected the settings wording to stay, got %q", got)
 	}
 }

@@ -366,6 +366,9 @@ func (data *Data) runURL() string {
 	if !data.CloudEnabled || data.OrgSlug == "" || data.RepoID == "" || data.RunID == "" {
 		return ""
 	}
+	if data.HideDashboardLinks {
+		return ""
+	}
 	return fmt.Sprintf(
 		"https://dashboard.infracost.io/org/%s/repos/%s/runs/%s",
 		data.OrgSlug, data.RepoID, data.RunID,

@@ -17,7 +17,7 @@ type Data struct {
 	// NeverShowCostEstimate suppresses the cost details section entirely.
 	NeverShowCostEstimate bool
 
-	// HideDashboardLinks drops the lines that link to Infracost Cloud, for
+	// HideDashboardLinks drops everything that links to Infracost Cloud, for
 	// organizations whose engineers have no dashboard access.
 	HideDashboardLinks bool
 
