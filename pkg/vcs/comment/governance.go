@@ -286,11 +286,13 @@ func formatGovernanceSentence(totalIssuesCount int, hasGuardrail bool, supportsB
 		fixing = `Consider fixing this issue, it doesn't align with your company's FinOps policies & the Well-Architected Framework.`
 	}
 
+	// Markdown, not HTML: the flat template renders this verbatim on providers
+	// that show tags as literal text.
 	if supportsBotCommands {
-		return fmt.Sprintf("<p>%s <b>Add a PR comment with <code>@infracost help</code> to see how you can dismiss or snooze issues and unblock your PR.</b></p>", fixing)
+		return fmt.Sprintf("%s **Add a PR comment with `@infracost help` to see how you can dismiss or snooze issues and unblock your PR.**", fixing)
 	}
 
-	return fmt.Sprintf("<p>%s</p>", fixing)
+	return fixing
 }
 
 // formatFinopsResourceLocation formats a FinOps failing resource's location with
@@ -734,6 +736,75 @@ func escapeAndFormatCode(s string) string {
 	// Code spans cannot contain line endings.
 	s = strings.NewReplacer("\r\n", " ", "\n", " ", "\r", " ").Replace(s)
 
+	fence := strings.Repeat("`", longestBacktickRun(s)+1)
+
+	// If the content starts or ends with a backtick, pad with a space so the
+	// boundary is not read as part of the fence; the renderer strips a single
+	// leading/trailing space.
+	if strings.HasPrefix(s, "`") || strings.HasSuffix(s, "`") {
+		s = " " + s + " "
+	}
+
+	return fence + s + fence
+}
+
+// mdTextEscaper neutralises the Markdown specials that would otherwise break
+// the line a value lands on. A backslash escape renders as the bare character.
+var mdTextEscaper = strings.NewReplacer(
+	`\`, `\\`, "`", "\\`", `*`, `\*`, `_`, `\_`, `[`, `\[`, `]`, `\]`,
+	`|`, `\|`, `<`, `\<`, `#`, `\#`, `~`, `\~`,
+)
+
+// escapeAndFormatText renders a user-controlled value as plain text, for values
+// shown as prose rather than as code. Line endings collapse to spaces so the
+// value cannot escape the heading, bold span or table row it sits in.
+func escapeAndFormatText(s string) string {
+	s = strings.NewReplacer("\r\n", " ", "\n", " ", "\r", " ").Replace(s)
+	return mdTextEscaper.Replace(s)
+}
+
+// escapeAndFormatTableCell is escapeAndFormatCode for Markdown table cells: a
+// pipe ends the cell even inside a code span, so it has to be escaped too.
+func escapeAndFormatTableCell(s string) string {
+	return escapePipes(escapeAndFormatCode(s))
+}
+
+// escapePipes escapes the pipes in already-formatted Markdown headed for a
+// table cell, for values that are not re-escaped as a code span here. Line
+// endings collapse to spaces: a newline ends the row. Already-escaped pipes are
+// left alone so the value renders as its author wrote it.
+func escapePipes(s string) string {
+	s = strings.NewReplacer("\r\n", " ", "\n", " ", "\r", " ").Replace(s)
+
+	var b strings.Builder
+	for i, r := range s {
+		if r == '|' && !escapedAt(s, i) {
+			b.WriteByte('\\')
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
+// escapedAt reports whether the byte at i is preceded by an odd number of
+// backslashes, i.e. is itself escaped.
+func escapedAt(s string, i int) bool {
+	n := 0
+	for j := i - 1; j >= 0 && s[j] == '\\'; j-- {
+		n++
+	}
+	return n%2 == 1
+}
+
+// escapeAndFormatCodeBlock renders s as a fenced code block, with a fence one
+// longer than the longest backtick run in s so the content cannot close it.
+func escapeAndFormatCodeBlock(s string) string {
+	fence := strings.Repeat("`", max(longestBacktickRun(s)+1, 3))
+	return fmt.Sprintf("%s\n%s\n%s", fence, s, fence)
+}
+
+// longestBacktickRun returns the length of the longest run of backticks in s.
+func longestBacktickRun(s string) int {
 	longest, current := 0, 0
 	for _, r := range s {
 		if r == '`' {
@@ -745,16 +816,7 @@ func escapeAndFormatCode(s string) string {
 			current = 0
 		}
 	}
-	fence := strings.Repeat("`", longest+1)
-
-	// If the content starts or ends with a backtick, pad with a space so the
-	// boundary is not read as part of the fence; the renderer strips a single
-	// leading/trailing space.
-	if strings.HasPrefix(s, "`") || strings.HasSuffix(s, "`") {
-		s = " " + s + " "
-	}
-
-	return fence + s + fence
+	return longest
 }
 
 // formatMarkdownLink renders "[`text`](url)" with both halves hardened against

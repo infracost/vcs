@@ -1,0 +1,18 @@
+{{- define "projectCosts" }}
+{{- if gt (len .CostTableEntries) 0 }}
+
+| Changed project |{{ if .ShowModulePath }} Module path |{{ end }}{{ if .ShowWorkspace }} Workspace |{{ end }} Baseline cost | Usage cost* | Total change | New monthly cost |
+| --- |{{ if .ShowModulePath }} --- |{{ end }}{{ if .ShowWorkspace }} --- |{{ end }} ---: | ---: | ---: | ---: |
+{{- range .CostTableEntries }}
+| {{ .ProjectName | mdCell }} |{{ if $.ShowModulePath }} {{ .ModulePath | mdCell }} |{{ end }}{{ if $.ShowWorkspace }} {{ .Workspace | mdCell }} |{{ end }} {{ .BaselineCostChange }} | {{ .UsageCostChange }} | {{ .TotalCostChange }} | {{ .NewTotalCost }} |
+{{- end }}
+{{- if .UsageCostsMsg }}
+
+{{ .UsageCostsMsg }}
+{{- end }}
+{{- if .EnableEnvironmentalMetricComment }}
+
+**The methodology for calculating the CO₂e impact of your changes is explained [in our docs](https://www.infracost.io/docs/infracost_cloud/infracarbon).**
+{{- end }}
+{{- end }}
+{{- end }}
