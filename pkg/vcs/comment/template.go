@@ -45,16 +45,34 @@ var templateFS embed.FS
 // or replace with their own. It renders HTML-flavoured Markdown suitable for
 // most platforms (GitHub, GitLab, Azure Repos).
 var DefaultTemplate = template.Must(
-	template.New("comment.tmpl").
-		Funcs(template.FuncMap{
-			// mdCode renders a user-controlled value as an injection-safe inline
-			// code span, for values shown as code in a Markdown context. Values
-			// rendered inside raw-HTML blocks (<td>, <pre>, <b>) use the built-in
-			// `html` function instead, which is the correct escaping there.
-			"mdCode": escapeAndFormatCode,
-		}).
-		ParseFS(templateFS, "templates/*.tmpl"),
+	template.New("comment.tmpl").Funcs(templateFuncs).ParseFS(templateFS, "templates/*.tmpl"),
 )
+
+// FlatTemplate renders the same report without raw HTML: no <details>, no
+// <table>. For providers that show HTML tags as literal text, such as
+// Bitbucket. Estimate details are omitted rather than dumped uncollapsed.
+var FlatTemplate = template.Must(
+	template.New("comment.tmpl").Funcs(templateFuncs).ParseFS(templateFS, "templates/flat/*.tmpl"),
+)
+
+var templateFuncs = template.FuncMap{
+	// mdCode renders a user-controlled value as an injection-safe inline
+	// code span, for values shown as code in a Markdown context. Values
+	// rendered inside raw-HTML blocks (<td>, <pre>, <b>) use the built-in
+	// `html` function instead, which is the correct escaping there.
+	"mdCode": escapeAndFormatCode,
+
+	// mdCell is mdCode for values rendered inside a Markdown table cell, where
+	// an unescaped pipe would split the row.
+	"mdCell": escapeAndFormatTableCell,
+
+	// mdPipes escapes pipes in values that are already formatted Markdown
+	// (e.g. a label holding a code span) and land in a table cell.
+	"mdPipes": escapePipes,
+
+	// mdBlock renders a value as a fenced code block the content cannot close.
+	"mdBlock": escapeAndFormatCodeBlock,
+}
 
 // truncationBuffer is reserved inside maxCommentSize to cover both the
 // markdown tag prepended at post time (~70 chars) and the imprecision of
@@ -125,7 +143,14 @@ func renderWithTruncation(tmpl *template.Template, inputs *Inputs, maxSize int, 
 	if err := tmpl.Execute(&buf, inputs); err != nil {
 		return "", err
 	}
-	return buf.String(), nil
+
+	// A template that omits CostDetails has nothing to shrink above, so cap the
+	// whole body: the provider's API rejects an oversize comment outright.
+	out := buf.String()
+	if measureLen(out, unit) > maxLen {
+		out = truncateMiddleStr(out, maxLen, unit)
+	}
+	return out, nil
 }
 
 // truncateMiddleStr keeps the start and end of s, replacing the middle with

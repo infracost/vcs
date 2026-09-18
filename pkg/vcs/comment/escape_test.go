@@ -31,6 +31,55 @@ func TestEscapeAndFormatCode(t *testing.T) {
 	}
 }
 
+func TestEscapeAndFormatTableCell(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "ordinary value", in: "my-project", want: "`my-project`"},
+		{
+			// An unescaped pipe ends the cell, code span or not.
+			name: "pipe escaped",
+			in:   "my|project",
+			want: "`my\\|project`",
+		},
+		{name: "pipe and backtick", in: "a`b|c", want: "``a`b\\|c``"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := escapeAndFormatTableCell(tt.in); got != tt.want {
+				t.Errorf("escapeAndFormatTableCell(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestEscapeAndFormatCodeBlock(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "plain error", in: "failed to parse", want: "```\nfailed to parse\n```"},
+		{
+			// Error text that echoes source may carry a fence of its own.
+			name: "inner fence widens the outer one",
+			in:   "at line 3: ```\n[click](https://evil.example)",
+			want: "````\nat line 3: ```\n[click](https://evil.example)\n````",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := escapeAndFormatCodeBlock(tt.in); got != tt.want {
+				t.Errorf("escapeAndFormatCodeBlock(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestJoinEscapedCode(t *testing.T) {
 	got := joinEscapedCode([]string{"a", "b`c"})
 	want := "`a`, ``b`c``"
@@ -110,6 +159,29 @@ func TestFormatMarkdownLink(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := formatMarkdownLink(tt.text, tt.url); got != tt.want {
 				t.Errorf("formatMarkdownLink(%q, %q) = %q, want %q", tt.text, tt.url, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestEscapePipes(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "plain", in: "over budget", want: "over budget"},
+		{name: "pipe", in: "a|b", want: `a\|b`},
+		{name: "already escaped", in: `a\|b`, want: `a\|b`},
+		{name: "escaped backslash then pipe", in: `a\\|b`, want: `a\\\|b`},
+		{name: "newline", in: "line one\nline two", want: "line one line two"},
+		{name: "crlf", in: "line one\r\nline two", want: "line one line two"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := escapePipes(tt.in); got != tt.want {
+				t.Errorf("escapePipes(%q) = %q, want %q", tt.in, got, tt.want)
 			}
 		})
 	}

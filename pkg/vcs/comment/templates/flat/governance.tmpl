@@ -1,0 +1,47 @@
+{{- define "governanceEntry" }}
+
+**{{ if .Blocking }}❌{{ else }}🔴{{ end }} {{ .Title }}**
+{{- if .Details }}
+
+{{ .Details }}
+{{- end }}
+{{- if .Message }}
+
+{{ .Message }}
+{{- end }}
+{{- range .Resources }}
+
+{{ if .Location }}{{ .Location }}{{ end }}
+{{- range .ProjectIssues }}
+{{- range .Issues }}
+  * {{ . }}
+{{- end }}
+{{- if .ProjectNamesLabel }}
+
+  in {{ .ProjectNamesLabel }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if gt .TruncatedIssues 0 }}
+
+... and {{ .TruncatedIssues }} more.
+{{- end }}
+{{- end }}
+
+{{- define "governanceTable" }}
+
+#### {{ .Title }}
+{{- range .Entries }}
+{{- template "governanceEntry" . }}
+{{- end }}
+{{- if and .Truncated .CloudURL }}
+
+... view [all issues]({{ .CloudURL }}) in Infracost Cloud
+{{- end }}
+{{- end }}
+
+{{- define "governance" }}
+{{- range .GovernanceTables }}
+{{- template "governanceTable" . }}
+{{- end }}
+{{- end }}

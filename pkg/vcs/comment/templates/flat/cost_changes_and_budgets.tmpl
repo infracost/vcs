@@ -1,0 +1,42 @@
+{{- define "costChangesAndBudgets" }}
+{{- if gt (len .BudgetCostRows) 0 }}
+
+---
+
+## Cost changes & budgets
+
+| Cost estimate | Previous cost | Cost change | New cost |
+| --- | ---: | ---: | ---: |
+{{- range .BudgetCostRows }}
+| {{ .Label | mdPipes }} | {{ .PreviousCost }} | **{{ .CostChange }}** | {{ .NewCost }} |
+{{- end }}
+{{- if .BudgetGuardrailNote }}
+
+{{ .BudgetGuardrailNote }}
+{{- end }}
+{{- if .BudgetCostNote }}
+
+{{ .BudgetCostNote }}
+{{- end }}
+
+{{- if gt (len .BudgetRows) 0 }}
+
+| Budget scope | Current cost | Budget |
+| --- | ---: | ---: |
+{{- range .BudgetRows }}
+| {{ .Scope | mdPipes }} (from {{ .StartDate }} till {{ .EndDate }}) | {{ .CurrentCost }} | **{{ .Budget }}** |
+{{- if .Message }}
+| ↳ {{ .Message | mdPipes }} | | |
+{{- end }}
+{{- end }}
+{{- if $.BudgetOverrunNote }}
+
+{{ $.BudgetOverrunNote }}
+{{- end }}
+{{- if $.BudgetTagNote }}
+
+{{ $.BudgetTagNote }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

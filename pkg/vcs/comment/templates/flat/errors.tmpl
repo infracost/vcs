@@ -1,0 +1,13 @@
+{{- define "errors" }}
+
+#### ⚠️ New Project Errors
+
+{{ .ProjectErrorCount }} introduced in this PR and could not be evaluated.
+
+{{ range .ProjectErrors }}
+- **{{ .Name | mdCode }}**
+
+{{ .Error | mdBlock }}
+{{ end }}
+---
+{{- end }}

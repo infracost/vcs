@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"text/template"
 	"time"
 	"unicode/utf8"
 
@@ -35,13 +36,16 @@ func githubSourceLink(repoURL, commitSHA, path string, startLine int) string {
 	return link
 }
 
-func TestRender(t *testing.T) {
-	tests := []struct {
-		name           string
-		maxCommentSize int
-		data           Data
-		goldenFile     string
-	}{
+type renderTestCase struct {
+	name           string
+	maxCommentSize int
+	data           Data
+	goldenFile     string
+}
+
+// renderCases are the report scenarios both templates are rendered against.
+func renderCases() []renderTestCase {
+	return []renderTestCase{
 		{
 			name:           "minimal_empty",
 			maxCommentSize: 65000,
@@ -969,8 +973,10 @@ func TestRender(t *testing.T) {
 			goldenFile: "budget_multiple.md",
 		},
 	}
+}
 
-	for _, tt := range tests {
+func TestRender(t *testing.T) {
+	for _, tt := range renderCases() {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := Render(DefaultTemplate, tt.maxCommentSize, SizeUnitBytes, githubSourceLink, tt.data)
 			if err != nil {
@@ -995,6 +1001,94 @@ func TestRender(t *testing.T) {
 				t.Errorf("Render() mismatch (-want +got):\n%s", diff)
 			}
 		})
+	}
+}
+
+// rawHTMLTags are the tags the default template uses. FlatTemplate exists
+// because providers like Bitbucket show them as literal text.
+var rawHTMLTags = []string{"<details", "<summary", "<table", "<td", "<tr", "<thead", "<tbody",
+	"<h3", "<h4", "<sub", "<span", "<p>", "<b", "<code", "<ul", "<li", "<pre", "<hr"}
+
+func TestRenderFlat(t *testing.T) {
+	for _, tt := range renderCases() {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Render(FlatTemplate, tt.maxCommentSize, SizeUnitBytes, githubSourceLink, tt.data)
+			if err != nil {
+				t.Fatalf("Render() error: %v", err)
+			}
+
+			for _, tag := range rawHTMLTags {
+				if strings.Contains(got, tag) {
+					t.Errorf("Render(FlatTemplate) contains raw HTML %q:\n%s", tag, got)
+				}
+			}
+
+			if n := utf8.RuneCountInString(got); n > tt.maxCommentSize {
+				t.Errorf("Render(FlatTemplate) = %d runes, over the %d limit", n, tt.maxCommentSize)
+			}
+		})
+	}
+}
+
+// The flat template drops the estimate details the truncation pass shrinks, so
+// the body itself has to be capped. The cap is not template-specific, so hold
+// the default template to it too.
+func TestRenderCapsOversizeBody(t *testing.T) {
+	data := Data{Currency: "USD", TotalMonthlyCost: rat.New(1000), PastTotalMonthlyCost: rat.New(500)}
+	// Enough projects that the cost table alone runs past the limit: the cap is
+	// only exercised when the body is oversize before CostDetails is added.
+	for i := 0; i < 5000; i++ {
+		data.Projects = append(data.Projects, ProjectResult{
+			Name:                 fmt.Sprintf("project-%d", i),
+			TotalMonthlyCost:     rat.New(2),
+			PastTotalMonthlyCost: rat.New(1),
+			DiffBreakdown: &CostBreakdown{
+				TotalMonthlyCost: rat.New(1),
+				Resources:        []BreakdownResource{{Name: "aws_instance.web", MonthlyCost: rat.New(1)}},
+			},
+		})
+	}
+
+	const maxSize = 32768
+	for name, tmpl := range map[string]*template.Template{"flat": FlatTemplate, "default": DefaultTemplate} {
+		t.Run(name, func(t *testing.T) {
+			got, err := Render(tmpl, maxSize, SizeUnitRunes, githubSourceLink, data)
+			if err != nil {
+				t.Fatalf("Render() error: %v", err)
+			}
+			if n := utf8.RuneCountInString(got); n > maxSize {
+				t.Errorf("Render() = %d runes, over the %d limit", n, maxSize)
+			}
+			if !strings.Contains(got, "...") {
+				t.Errorf("Render() was not truncated:\n%s", got)
+			}
+		})
+	}
+}
+
+// A pipe in a project name would split the row of a Markdown table.
+func TestRenderFlatEscapesPipesInTableCells(t *testing.T) {
+	data := Data{
+		Currency:             "USD",
+		TotalMonthlyCost:     rat.New(150),
+		PastTotalMonthlyCost: rat.New(100),
+		Projects: []ProjectResult{{
+			Name:                 "my|project",
+			TotalMonthlyCost:     rat.New(150),
+			PastTotalMonthlyCost: rat.New(100),
+			DiffBreakdown: &CostBreakdown{
+				TotalMonthlyCost: rat.New(50),
+				Resources:        []BreakdownResource{{Name: "aws_instance.web", MonthlyCost: rat.New(50)}},
+			},
+		}},
+	}
+
+	got, err := Render(FlatTemplate, 32768, SizeUnitRunes, githubSourceLink, data)
+	if err != nil {
+		t.Fatalf("Render() error: %v", err)
+	}
+	if !strings.Contains(got, `my\|project`) {
+		t.Errorf("Render(FlatTemplate) left the pipe unescaped:\n%s", got)
 	}
 }
 
