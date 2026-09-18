@@ -291,6 +291,9 @@ func (data *Data) processPreexistingIssues(inputs *Inputs, finopsIndex, security
 	if !data.CloudEnabled || data.BaseBranchName == "" || data.OrgSlug == "" || data.RepoID == "" {
 		return
 	}
+	if data.HideDashboardLinks {
+		return
+	}
 
 	// Total pre-existing issues on the base branch. The dashboard counts FinOps,
 	// cloud-security and tagging (cloud-security policies are stored alongside
@@ -416,8 +419,6 @@ type Inputs struct {
 	// UsageCostsMsg is a footnote about usage-based cost estimation.
 	UsageCostsMsg string
 
-	// EnableEnvironmentalMetricComment controls the CO₂e methodology link.
-	EnableEnvironmentalMetricComment bool
 
 	// GovernanceSentence is a summary line about policy alignment, e.g.
 	// "Consider fixing these issues..." or "This pull request is aligned...".

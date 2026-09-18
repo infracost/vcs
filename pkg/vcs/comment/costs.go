@@ -13,7 +13,6 @@ import (
 // metadata columns to show, and formats the usage costs message.
 // See: dashboard/api/src/services/templates/partials/projectCostsTable.ts
 func (data *Data) processProjectCosts(inputs *Inputs) {
-	inputs.EnableEnvironmentalMetricComment = data.EnableEnvironmentalMetrics
 	inputs.CostTableEntries = data.buildCostTableEntries()
 	data.calculateMetadataHeaders(inputs)
 	inputs.UsageCostsMsg = data.usageCostsMessage()
@@ -128,6 +127,10 @@ func (data *Data) calculateMetadataHeaders(inputs *Inputs) {
 // usageCostsMessage returns the footnote about usage-based cost estimation.
 // See: dashboard/api/src/services/templates/partials/usageCostMessageText.ts
 func (data *Data) usageCostsMessage() string {
+	if data.HideDashboardLinks {
+		return ""
+	}
+
 	cloudSettingsStr := "Infracost Cloud settings"
 	if data.CloudEnabled && data.OrgSlug != "" {
 		cloudSettingsStr = fmt.Sprintf("[Infracost Cloud settings](https://dashboard.infracost.io/org/%s/settings/usage-cost-defaults)", data.OrgSlug)

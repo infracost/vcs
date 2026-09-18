@@ -95,8 +95,6 @@ Key: * usage cost, ~ changed, + added, - removed
 
 </details>
 
-<hr/>
-
 <sub>
   This comment will be updated when code changes.
 </sub>

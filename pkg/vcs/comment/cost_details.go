@@ -134,9 +134,9 @@ func (data *Data) processProjectCostDetails(inputs *Inputs) {
 		parts = append(parts, separator)
 	}
 
-	if hasDiffProjects {
+	if usageMsg := data.usageCostsMessage(); hasDiffProjects && usageMsg != "" {
 		parts = append(parts, "\n")
-		parts = append(parts, data.usageCostsMessage())
+		parts = append(parts, usageMsg)
 		parts = append(parts, "\n")
 	}
 

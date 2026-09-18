@@ -39,7 +39,7 @@ This pull request is aligned with your company's FinOps policies and the Well-Ar
 ```
 Key: * usage cost, ~ changed, + added, - removed
 
-──────────────...infracost-usageyml) for other options.
+───────────────...s/#infracost-usageyml) for other options.
 
 5 cloud resources were detected:
 ∙ 5 were estimated
@@ -47,8 +47,6 @@ Key: * usage cost, ~ changed, + added, - removed
   </details>
 
 </details>
-
-<hr/>
 
 <sub>
   This comment will be updated when code changes.

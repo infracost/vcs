@@ -122,3 +122,11 @@ func TestTruncateMiddle(t *testing.T) {
 		t.Errorf("result has %d runes, want <= 10", utf8.RuneCountInString(got))
 	}
 }
+
+func TestUsageCostsMessage_HiddenWhenDashboardLinksHidden(t *testing.T) {
+	data := &Data{CloudEnabled: true, OrgSlug: "org", HideDashboardLinks: true}
+
+	if got := data.usageCostsMessage(); got != "" {
+		t.Errorf("expected no message, got %q", got)
+	}
+}

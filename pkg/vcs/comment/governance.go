@@ -806,10 +806,6 @@ const (
 	gramsCO2PerCarKm             = 251
 )
 
-// infracostDevFixInIDEURL is the "Fix in your IDE" link shown inline on each
-// issue to promote Infracost Dev.
-const infracostDevFixInIDEURL = "https://cost.dev/?utm_source=pr_comment&utm_content=fix_in_ide"
-
 // formatFinopsIssueDescription formats a FinOps issue description with optional
 // savings and carbon/water metrics, matching the dashboard's fetchCommentPolicies
 // formatting logic.
@@ -836,12 +832,6 @@ func formatFinopsIssueDescription(issue *provider.FinopsResourceIssue, currency 
 			}
 		}
 	}
-
-	// Promote Infracost Dev: invite the user to remediate the issue in their IDE.
-	description = fmt.Sprintf(
-		"%s\n%s* 🔧 [Fix in your IDE](%s) — or ask your agent to apply it with Infracost Dev",
-		description, listIndent, infracostDevFixInIDEURL,
-	)
 
 	return description
 }

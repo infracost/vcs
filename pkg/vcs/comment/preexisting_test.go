@@ -108,3 +108,14 @@ func TestPreexisting_AllResolved(t *testing.T) {
 		t.Errorf("expected no sentence when all resolved, got %q", got)
 	}
 }
+
+func TestPreexisting_HiddenWhenDashboardLinksHidden(t *testing.T) {
+	d := baseData()
+	d.HideDashboardLinks = true
+	d.PreviousFinOpsPolicyResults = []*provider.FinopsPolicyResult{finopsResult("finops", "x", "y")}
+	d.FinOpsPolicyResults = []*provider.FinopsPolicyResult{finopsResult("finops", "x", "y")}
+
+	if got := preexistingSentence(d); got != "" {
+		t.Errorf("expected no sentence, got %q", got)
+	}
+}
