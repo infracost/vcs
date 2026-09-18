@@ -1,6 +1,6 @@
 {{- define "governanceEntry" }}
 
-**{{ if .Blocking }}❌{{ else }}🔴{{ end }} {{ .Title }}**
+**{{ if .Blocking }}❌{{ else }}🔴{{ end }} {{ .Title | mdText }}**
 {{- if .Details }}
 
 {{ .Details }}

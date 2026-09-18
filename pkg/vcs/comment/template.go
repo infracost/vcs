@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+	"text/template/parse"
 	"unicode/utf8"
 
 	"github.com/infracost/go-proto/pkg/rat"
@@ -72,6 +73,10 @@ var templateFuncs = template.FuncMap{
 
 	// mdBlock renders a value as a fenced code block the content cannot close.
 	"mdBlock": escapeAndFormatCodeBlock,
+
+	// mdText renders a value as plain prose with its Markdown specials escaped,
+	// for values shown as text rather than as code.
+	"mdText": escapeAndFormatText,
 }
 
 // truncationBuffer is reserved inside maxCommentSize to cover both the
@@ -105,19 +110,81 @@ func Render(tmpl *template.Template, maxCommentSize int, unit SizeUnit, srcLink 
 	data.processCostChangesAndBudgets(inputs)
 	data.processDisplayCosts(inputs, hasGuardrail)
 	data.processProjectCosts(inputs)
+	// Always built: the flat template does not print the details but does test
+	// the field, to say they were left out.
 	data.processProjectCostDetails(inputs)
+	hasDetails := emitsCostDetails(tmpl)
 	if !hasGuardrail {
 		data.processPreexistingIssues(inputs, finopsIndex, securityIndex, taggingIndex)
 	}
 
-	return renderWithTruncation(tmpl, inputs, maxCommentSize, unit)
+	return renderWithTruncation(tmpl, inputs, maxCommentSize, unit, hasDetails)
+}
+
+// emitsCostDetails reports whether tmpl prints .CostDetails. Only printed
+// actions count: the flat template tests the field to decide whether to say the
+// details were left out, but never renders them, so it has nothing to shrink.
+func emitsCostDetails(tmpl *template.Template) bool {
+	for _, t := range tmpl.Templates() {
+		if t.Tree == nil || t.Root == nil {
+			continue
+		}
+		if nodeEmitsCostDetails(t.Root) {
+			return true
+		}
+	}
+	return false
+}
+
+func nodeEmitsCostDetails(n parse.Node) bool {
+	switch n := n.(type) {
+	case *parse.ActionNode:
+		return strings.Contains(n.Pipe.String(), ".CostDetails")
+	case *parse.ListNode:
+		if n == nil {
+			return false
+		}
+		for _, child := range n.Nodes {
+			if nodeEmitsCostDetails(child) {
+				return true
+			}
+		}
+	case *parse.IfNode:
+		return branchEmitsCostDetails(&n.BranchNode)
+	case *parse.RangeNode:
+		return branchEmitsCostDetails(&n.BranchNode)
+	case *parse.WithNode:
+		return branchEmitsCostDetails(&n.BranchNode)
+	}
+	return false
+}
+
+// branchEmitsCostDetails checks a branch's bodies but not its condition: a
+// {{ if .CostDetails }} reads the field without printing it.
+func branchEmitsCostDetails(b *parse.BranchNode) bool {
+	return nodeEmitsCostDetails(b.List) || nodeEmitsCostDetails(b.ElseList)
 }
 
 // renderWithTruncation renders the template, truncating CostDetails if the
-// output exceeds maxSize.
+// output exceeds maxSize. When the template has no CostDetails to shrink the
+// whole body is capped instead: the provider's API rejects an oversize comment
+// outright. That cap is not applied to templates that do, because the cut point
+// is arbitrary and would land inside their HTML.
 // See: dashboard/api/src/services/templates/helpers.ts renderTemplateAndTruncateIfNecessary
-func renderWithTruncation(tmpl *template.Template, inputs *Inputs, maxSize int, unit SizeUnit) (string, error) {
+func renderWithTruncation(tmpl *template.Template, inputs *Inputs, maxSize int, unit SizeUnit, hasDetails bool) (string, error) {
 	maxLen := maxSize - truncationBuffer
+
+	if !hasDetails {
+		var buf bytes.Buffer
+		if err := tmpl.Execute(&buf, inputs); err != nil {
+			return "", err
+		}
+		out := buf.String()
+		if measureLen(out, unit) > maxLen {
+			out = truncateMiddleStr(out, maxLen, unit)
+		}
+		return out, nil
+	}
 
 	// First pass: render without cost details to measure the base size.
 	fullCostDetails := inputs.CostDetails
@@ -144,13 +211,7 @@ func renderWithTruncation(tmpl *template.Template, inputs *Inputs, maxSize int, 
 		return "", err
 	}
 
-	// A template that omits CostDetails has nothing to shrink above, so cap the
-	// whole body: the provider's API rejects an oversize comment outright.
-	out := buf.String()
-	if measureLen(out, unit) > maxLen {
-		out = truncateMiddleStr(out, maxLen, unit)
-	}
-	return out, nil
+	return buf.String(), nil
 }
 
 // truncateMiddleStr keeps the start and end of s, replacing the middle with

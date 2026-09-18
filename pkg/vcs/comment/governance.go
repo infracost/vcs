@@ -748,6 +748,21 @@ func escapeAndFormatCode(s string) string {
 	return fence + s + fence
 }
 
+// mdTextEscaper neutralises the Markdown specials that would otherwise break
+// the line a value lands on. A backslash escape renders as the bare character.
+var mdTextEscaper = strings.NewReplacer(
+	`\`, `\\`, "`", "\\`", `*`, `\*`, `_`, `\_`, `[`, `\[`, `]`, `\]`,
+	`|`, `\|`, `<`, `\<`, `#`, `\#`, `~`, `\~`,
+)
+
+// escapeAndFormatText renders a user-controlled value as plain text, for values
+// shown as prose rather than as code. Line endings collapse to spaces so the
+// value cannot escape the heading, bold span or table row it sits in.
+func escapeAndFormatText(s string) string {
+	s = strings.NewReplacer("\r\n", " ", "\n", " ", "\r", " ").Replace(s)
+	return mdTextEscaper.Replace(s)
+}
+
 // escapeAndFormatTableCell is escapeAndFormatCode for Markdown table cells: a
 // pipe ends the cell even inside a code span, so it has to be escaped too.
 func escapeAndFormatTableCell(s string) string {

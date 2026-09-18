@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"text/template"
 	"time"
 	"unicode/utf8"
 
@@ -1031,8 +1030,8 @@ func TestRenderFlat(t *testing.T) {
 }
 
 // The flat template drops the estimate details the truncation pass shrinks, so
-// the body itself has to be capped. The cap is not template-specific, so hold
-// the default template to it too.
+// the body itself has to be capped. The default template keeps its collapsible
+// section, and capping it would cut the middle out of the HTML.
 func TestRenderCapsOversizeBody(t *testing.T) {
 	data := Data{Currency: "USD", TotalMonthlyCost: rat.New(1000), PastTotalMonthlyCost: rat.New(500)}
 	// Enough projects that the cost table alone runs past the limit: the cap is
@@ -1050,20 +1049,30 @@ func TestRenderCapsOversizeBody(t *testing.T) {
 	}
 
 	const maxSize = 32768
-	for name, tmpl := range map[string]*template.Template{"flat": FlatTemplate, "default": DefaultTemplate} {
-		t.Run(name, func(t *testing.T) {
-			got, err := Render(tmpl, maxSize, SizeUnitRunes, githubSourceLink, data)
-			if err != nil {
-				t.Fatalf("Render() error: %v", err)
-			}
-			if n := utf8.RuneCountInString(got); n > maxSize {
-				t.Errorf("Render() = %d runes, over the %d limit", n, maxSize)
-			}
-			if !strings.Contains(got, "...") {
-				t.Errorf("Render() was not truncated:\n%s", got)
-			}
-		})
-	}
+	t.Run("flat", func(t *testing.T) {
+		got, err := Render(FlatTemplate, maxSize, SizeUnitRunes, githubSourceLink, data)
+		if err != nil {
+			t.Fatalf("Render() error: %v", err)
+		}
+		if n := utf8.RuneCountInString(got); n > maxSize {
+			t.Errorf("Render() = %d runes, over the %d limit", n, maxSize)
+		}
+		if !strings.Contains(got, "...") {
+			t.Error("Render() was not truncated")
+		}
+	})
+
+	// Cutting the middle out of the HTML body would leave an unbalanced tag and
+	// break the rest of the comment's rendering, so it is left oversize.
+	t.Run("default", func(t *testing.T) {
+		got, err := Render(DefaultTemplate, maxSize, SizeUnitRunes, githubSourceLink, data)
+		if err != nil {
+			t.Fatalf("Render() error: %v", err)
+		}
+		if !strings.HasSuffix(strings.TrimSpace(got), "</sub>") {
+			t.Error("Render() did not end with a closed tag, so the body was cut mid-HTML")
+		}
+	})
 }
 
 // A pipe in a project name would split the row of a Markdown table.
@@ -1204,5 +1213,44 @@ func TestProcessFixedIssuesTruncation(t *testing.T) {
 	// Top entry should be the policy with the most fixes (7).
 	if inputs.FixedIssueCounts[0].FixedIssues != 7 {
 		t.Errorf("top FixedIssues = %d, want 7", inputs.FixedIssueCounts[0].FixedIssues)
+	}
+}
+
+// The flat template tests .CostDetails to say the details were left out, but
+// never prints them. Only printing counts, or the whole-body cap is skipped.
+func TestEmitsCostDetails(t *testing.T) {
+	if !emitsCostDetails(DefaultTemplate) {
+		t.Error("emitsCostDetails(DefaultTemplate) = false, want true")
+	}
+	if emitsCostDetails(FlatTemplate) {
+		t.Error("emitsCostDetails(FlatTemplate) = true, want false")
+	}
+}
+
+// A policy name is customer-authored, so it must not be able to break out of
+// the bold span it is rendered in.
+func TestRenderFlatEscapesPolicyTitle(t *testing.T) {
+	data := Data{
+		Currency:         "USD",
+		TotalMonthlyCost: rat.New(100),
+		FinOpsPolicyResults: []*provider.FinopsPolicyResult{{
+			PolicyName:                  "**bad**\n# heading",
+			IncludeInPullRequestComment: true,
+			FailingResources: []*provider.FinopsPolicyFailingResource{{
+				Id:           "aws_instance.web",
+				CauseAddress: "aws_instance.web",
+				Path:         "main.tf",
+				ProjectNames: []string{"my-project"},
+				Issues:       []*provider.FinopsResourceIssue{{Description: "runs 24/7"}},
+			}},
+		}},
+	}
+
+	got, err := Render(FlatTemplate, 65000, SizeUnitRunes, githubSourceLink, data)
+	if err != nil {
+		t.Fatalf("Render() error: %v", err)
+	}
+	if !strings.Contains(got, `\*\*bad\*\* \# heading`) {
+		t.Errorf("Render() did not escape the policy title:\n%s", got)
 	}
 }

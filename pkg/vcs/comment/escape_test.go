@@ -186,3 +186,27 @@ func TestEscapePipes(t *testing.T) {
 		})
 	}
 }
+
+func TestEscapeAndFormatText(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "plain", in: "Use reserved instances", want: "Use reserved instances"},
+		{name: "bold markers", in: "**urgent** policy", want: `\*\*urgent\*\* policy`},
+		{name: "newline", in: "line one\nline two", want: "line one line two"},
+		{name: "heading marker", in: "# not a heading", want: `\# not a heading`},
+		{name: "raw html", in: "<script>alert(1)</script>", want: `\<script>alert(1)\</script>`},
+		{name: "pipe", in: "a|b", want: `a\|b`},
+		{name: "backslash first", in: `a\*b`, want: `a\\\*b`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := escapeAndFormatText(tt.in); got != tt.want {
+				t.Errorf("escapeAndFormatText(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
