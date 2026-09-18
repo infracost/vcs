@@ -382,7 +382,7 @@ func formatCostDetailsMsg(hasUnsupported, hasError bool) string {
 // counting total failed issues on the base branch and subtracting fixed issues.
 // See: dashboard/api/src/services/templates/partials/preexistingIssuesSentenceText.ts
 func (data *Data) processPreexistingIssues(inputs *Inputs, finopsIndex, securityIndex policyFailureIndex, taggingIndex taggingFailureIndex) {
-	if !data.CloudEnabled || data.BaseBranchName == "" || data.OrgSlug == "" || data.RepoID == "" {
+	if !data.CloudEnabled || data.BaseBranchName == "" || data.OrgSlug == "" || data.RepoID == "" || data.HideDashboardLinks {
 		return
 	}
 
@@ -510,7 +510,9 @@ type Inputs struct {
 	// UsageCostsMsg is a footnote about usage-based cost estimation.
 	UsageCostsMsg string
 
-	// EnableEnvironmentalMetricComment controls the CO₂e methodology link.
+	// EnableEnvironmentalMetricComment reports whether carbon estimates are on.
+	// The bundled templates do not print it; it is part of the data a custom
+	// template binds against.
 	EnableEnvironmentalMetricComment bool
 
 	// GovernanceSentence is a summary line about policy alignment, e.g.

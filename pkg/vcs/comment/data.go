@@ -17,6 +17,10 @@ type Data struct {
 	// NeverShowCostEstimate suppresses the cost details section entirely.
 	NeverShowCostEstimate bool
 
+	// HideDashboardLinks drops the lines that link to Infracost Cloud, for
+	// organizations whose engineers have no dashboard access.
+	HideDashboardLinks bool
+
 	// UsedUsageFile is true when an infracost-usage.yml was used or configured.
 	// Available from runner's RunMetadata.UsageFilePath != "" || RunMetadata.ConfigFileHasUsageFile.
 	UsedUsageFile bool

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"text/template"
 	"time"
 	"unicode/utf8"
 
@@ -491,6 +492,83 @@ func renderCases() []renderTestCase {
 				},
 			},
 			goldenFile: "environmental_metrics.md",
+		},
+		{
+			name:           "hide_dashboard_links",
+			maxCommentSize: 65000,
+			data: Data{
+				SupportsBotCommands:        true,
+				HideDashboardLinks:         true,
+				EnableEnvironmentalMetrics: true,
+				Currency:                   "USD",
+				TotalMonthlyCost:           rat.New(300),
+				PastTotalMonthlyCost:       rat.New(200),
+				CloudEnabled:               true,
+				OrgSlug:                    "my-org",
+				RepoID:                     "repo-123",
+				BaseBranchName:             "main",
+				Summary: ResourceSummary{
+					TotalDetectedResources:  1,
+					TotalSupportedResources: 1,
+				},
+				FinOpsPolicyResults: []*provider.FinopsPolicyResult{
+					{
+						PolicyName:                  "Use Graviton instances",
+						PolicySlug:                  "use-graviton",
+						PolicyMessage:               "Graviton instances are more energy efficient.",
+						IncludeInPullRequestComment: true,
+						FailingResources: []*provider.FinopsPolicyFailingResource{
+							{
+								Id:           "aws_instance.web",
+								CauseAddress: "aws_instance.web",
+								Issues: []*provider.FinopsResourceIssue{
+									{
+										Description:                   "Switch to Graviton instance type",
+										MonthlySavings:                rat.New(50).Proto(),
+										MonthlyCarbonSavingsGramsCo2E: rat.New(200000).Proto(),
+									},
+								},
+							},
+						},
+					},
+				},
+				PreviousFinOpsPolicyResults: []*provider.FinopsPolicyResult{
+					{
+						PolicyName:                  "Use reserved instances",
+						PolicySlug:                  "use-reserved",
+						IncludeInPullRequestComment: true,
+						FailingResources: []*provider.FinopsPolicyFailingResource{
+							{Id: "aws_instance.db"},
+						},
+					},
+				},
+				Projects: []ProjectResult{
+					{
+						Name:                 "my-project",
+						TotalMonthlyCost:     rat.New(300),
+						PastTotalMonthlyCost: rat.New(200),
+						Breakdown: &CostBreakdown{
+							TotalMonthlyCost: rat.New(300),
+							Resources: []BreakdownResource{
+								{Name: "aws_instance.web", MonthlyCost: rat.New(300)},
+							},
+						},
+						PastBreakdown: &CostBreakdown{
+							TotalMonthlyCost: rat.New(200),
+							Resources: []BreakdownResource{
+								{Name: "aws_instance.web", MonthlyCost: rat.New(200)},
+							},
+						},
+						DiffBreakdown: &CostBreakdown{
+							TotalMonthlyCost: rat.New(100),
+							Resources: []BreakdownResource{
+								{Name: "aws_instance.web", MonthlyCost: rat.New(100)},
+							},
+						},
+					},
+				},
+			},
+			goldenFile: "hide_dashboard_links.md",
 		},
 		{
 			name:           "governance_tagging",
@@ -1052,6 +1130,35 @@ func TestRenderFlatDetails(t *testing.T) {
 			// bytes: a multibyte body is longer than its rune count.
 			if n := measureLen(got, SizeUnitBytes); n > tt.maxCommentSize {
 				t.Errorf("Render(FlatDetailsTemplate) = %d bytes, over the %d limit", n, tt.maxCommentSize)
+			}
+		})
+	}
+}
+
+// The table marks its usage-cost column with an asterisk pointing at a
+// footnote. HideDashboardLinks removes that footnote, so the marker goes too.
+func TestRenderDropsUsageAsteriskWithTheFootnote(t *testing.T) {
+	var data Data
+	for _, tt := range renderCases() {
+		if tt.name == "hide_dashboard_links" {
+			data = tt.data
+		}
+	}
+
+	for _, tmpl := range []struct {
+		name string
+		tmpl *template.Template
+	}{{"default", DefaultTemplate}, {"flat", FlatTemplate}, {"flatDetails", FlatDetailsTemplate}} {
+		t.Run(tmpl.name, func(t *testing.T) {
+			got, err := Render(tmpl.tmpl, 65000, SizeUnitRunes, githubSourceLink, data)
+			if err != nil {
+				t.Fatalf("Render() error: %v", err)
+			}
+
+			for _, marker := range []string{"Usage cost</span>*", "Usage cost*"} {
+				if strings.Contains(got, marker) {
+					t.Errorf("Render() kept %q with no footnote below it:\n%s", marker, got)
+				}
 			}
 		})
 	}

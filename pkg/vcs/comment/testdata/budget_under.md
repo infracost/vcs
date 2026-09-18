@@ -100,8 +100,6 @@ No cloud resources were detected
 
 </details>
 
-<hr/>
-
 <sub>
   This comment will be updated when code changes.
 </sub>
