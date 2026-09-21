@@ -663,20 +663,25 @@ type GovernanceTable struct {
 	// When true and CloudURL is non-empty, a "view all issues" link is rendered.
 	Truncated bool
 
-	// TruncatedCount is how many policies were omitted from this table.
+	// TruncatedCount is how many rows were omitted from this table.
 	TruncatedCount int
+
+	// ItemNoun and ItemNounPlural name what a row of this table is, so the
+	// truncation line reads in the table's own words.
+	ItemNoun       string
+	ItemNounPlural string
 
 	// CloudURL is the Infracost Cloud link for viewing all issues. It is empty
 	// when cloud is disabled, in which case no dashboard link is rendered.
 	CloudURL string
 }
 
-// TruncatedLabel returns the omitted policy count with pluralized "policy"/"policies".
+// TruncatedLabel returns the omitted row count with the table's own noun.
 func (g GovernanceTable) TruncatedLabel() string {
 	if g.TruncatedCount == 1 {
-		return "1 more policy"
+		return "1 more " + g.ItemNoun
 	}
-	return fmt.Sprintf("%d more policies", g.TruncatedCount)
+	return fmt.Sprintf("%d more %s", g.TruncatedCount, g.ItemNounPlural)
 }
 
 // GovernanceEntry represents a single policy violation row.

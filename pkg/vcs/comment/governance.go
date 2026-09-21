@@ -55,8 +55,10 @@ func (data *Data) processPolicyResults(inputs *Inputs, title string, results []*
 	}
 
 	table := GovernanceTable{
-		Title:    title,
-		CloudURL: data.runURL(),
+		Title:          title,
+		CloudURL:       data.runURL(),
+		ItemNoun:       "policy",
+		ItemNounPlural: "policies",
 	}
 
 	for _, result := range results {
@@ -146,8 +148,10 @@ func (data *Data) processTaggingPolicyResults(inputs *Inputs, index taggingFailu
 	}
 
 	table := GovernanceTable{
-		Title:    "Tagging policies",
-		CloudURL: data.runURL(),
+		Title:          "Tagging policies",
+		CloudURL:       data.runURL(),
+		ItemNoun:       "policy",
+		ItemNounPlural: "policies",
 	}
 
 	for _, result := range data.TaggingPolicyResults {
@@ -237,8 +241,10 @@ func (data *Data) processGuardrailResults(inputs *Inputs) {
 	}
 
 	table := GovernanceTable{
-		Title:    "Guardrails",
-		CloudURL: data.runURL(),
+		Title:          "Guardrails",
+		CloudURL:       data.runURL(),
+		ItemNoun:       "guardrail",
+		ItemNounPlural: "guardrails",
 	}
 
 	for _, result := range data.GuardrailResults {

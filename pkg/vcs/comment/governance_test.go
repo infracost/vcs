@@ -139,3 +139,28 @@ func TestFormatTagResourceLocation(t *testing.T) {
 		})
 	}
 }
+
+func TestTruncatedLabel_NamesWhatTheTableHolds(t *testing.T) {
+	var guardrails []event.GuardrailResult
+	for i := 0; i < GovernancePolicyLimit+2; i++ {
+		guardrails = append(guardrails, event.GuardrailResult{
+			GuardrailID:   "guardrail",
+			GuardrailName: "Cost increase",
+			Triggered:     true,
+			PRComment:     true,
+			Increase:      rat.New(100),
+		})
+	}
+
+	data := &Data{Currency: "USD", GuardrailResults: guardrails}
+	inputs := &Inputs{}
+	data.processGuardrailResults(inputs)
+
+	if len(inputs.GovernanceTables) != 1 {
+		t.Fatalf("expected one table, got %d", len(inputs.GovernanceTables))
+	}
+
+	if got := inputs.GovernanceTables[0].TruncatedLabel(); got != "2 more guardrails" {
+		t.Errorf("TruncatedLabel() = %q, want %q", got, "2 more guardrails")
+	}
+}
