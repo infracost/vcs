@@ -1150,6 +1150,11 @@ func TestRenderFlat(t *testing.T) {
 			if n := measureLen(got, SizeUnitBytes); n > tt.maxCommentSize {
 				t.Errorf("Render(FlatTemplate) = %d bytes, over the %d limit", n, tt.maxCommentSize)
 			}
+
+			// The flat tree has no golden of its own, so the flag is asserted here.
+			if tt.data.HideDashboardLinks && strings.Contains(got, "dashboard.infracost.io") {
+				t.Errorf("Render(FlatTemplate) contains a dashboard link:\n%s", got)
+			}
 		})
 	}
 }
@@ -1175,6 +1180,12 @@ func TestRenderFlatDetails(t *testing.T) {
 			// bytes: a multibyte body is longer than its rune count.
 			if n := measureLen(got, SizeUnitBytes); n > tt.maxCommentSize {
 				t.Errorf("Render(FlatDetailsTemplate) = %d bytes, over the %d limit", n, tt.maxCommentSize)
+			}
+
+			// This template prints the details block, which carries the usage
+			// costs footnote the other flat template leaves out.
+			if tt.data.HideDashboardLinks && strings.Contains(got, "dashboard.infracost.io") {
+				t.Errorf("Render(FlatDetailsTemplate) contains a dashboard link:\n%s", got)
 			}
 		})
 	}
