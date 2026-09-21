@@ -2,12 +2,11 @@
 
 <table>
   <tr><td colspan="2" width="1000px">Guardrails</td></tr>
-  
 <tr><td colspan="2" title="Blocking failure">
 <b>❌ Cost increase > $100</b>
 </td></tr>
 
-  </table>
+</table>
 <hr/>
 
 ## Cost changes &amp; budgets

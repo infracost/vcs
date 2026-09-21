@@ -2,7 +2,6 @@
 
 <table>
   <tr><td colspan="2" width="1000px">Guardrails</td></tr>
-  
 <tr><td colspan="2" title="Blocking failure">
 <b>❌ Cost increase > $100</b>
 </td></tr>
@@ -11,7 +10,7 @@
 At least one project exceeded per-project threshold. Cost increased by $400, threshold was $100.
 </td></tr>
 
-  </table>
+</table>
 <details open>
   <summary><b>Monthly estimate increased by $400 📈</b></summary>
   <br/>

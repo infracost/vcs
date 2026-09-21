@@ -4,7 +4,6 @@ Consider fixing this issue, it doesn't align with your company's FinOps policies
 
 <table>
   <tr><td colspan="2" width="1000px">FinOps policies</td></tr>
-  
 <tr><td colspan="2" title="Failure">
 <details >
 <summary>
@@ -22,7 +21,7 @@ Graviton instances are more energy efficient.
     * 🌱 avoid 2.40 t CO₂e - that's more than 16 flights between London & Paris
 </td></tr>
 
-  </table>
+</table>
 <details >
   <summary><b>Monthly estimate increased by $100 📈</b> (🌱 emits 500.0 kg CO₂e - that's more than 3.3 flights between London & Paris)</summary>
   <br/>

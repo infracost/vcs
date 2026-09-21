@@ -4,7 +4,6 @@ Consider fixing these issues, they don't align with your company's FinOps polici
 
 <table>
   <tr><td colspan="2" width="1000px">FinOps policies</td></tr>
-  
 <tr><td colspan="2" title="Failure">
 <details >
 <summary>
@@ -26,7 +25,7 @@ in projects `prod`, `staging`
 in project `dev`
 </td></tr>
 
-  </table>
+</table>
 
 <sub>
   This comment will be updated when code changes.

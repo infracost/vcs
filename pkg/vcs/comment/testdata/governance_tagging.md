@@ -4,7 +4,6 @@ Consider fixing these issues, they don't align with your company's FinOps polici
 
 <table>
   <tr><td colspan="2" width="1000px">Tagging policies</td></tr>
-  
 <tr><td colspan="2" title="Blocking failure">
 <details open>
 <summary>
@@ -37,7 +36,7 @@ resource [`aws_ecs_service.api`](https://github.com/my-org/my-repo/blob/abc123/e
 in project `my-project`
 </td></tr>
 
-  </table>
+</table>
 
 <sub>
   This comment will be updated when code changes.

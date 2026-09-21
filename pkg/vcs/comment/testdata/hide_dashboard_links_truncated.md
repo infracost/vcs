@@ -4,7 +4,6 @@ Consider fixing these issues, they don't align with your company's FinOps polici
 
 <table>
   <tr><td colspan="2" width="1000px">FinOps policies</td></tr>
-  
 <tr><td colspan="2" title="Failure">
 <b>🔴 use-graviton</b>
 </td></tr>
@@ -14,7 +13,6 @@ Consider fixing these issues, they don't align with your company's FinOps polici
   * Switch to Graviton instance type — save $600/year
 </td></tr>
 
-  
 <tr><td colspan="2" title="Failure">
 <b>🔴 use-reserved</b>
 </td></tr>
@@ -24,7 +22,6 @@ Consider fixing these issues, they don't align with your company's FinOps polici
   * Switch to Graviton instance type — save $600/year
 </td></tr>
 
-  
 <tr><td colspan="2" title="Failure">
 <b>🔴 use-gp3</b>
 </td></tr>
@@ -34,7 +31,6 @@ Consider fixing these issues, they don't align with your company's FinOps polici
   * Switch to Graviton instance type — save $600/year
 </td></tr>
 
-  
 <tr><td colspan="2" title="Failure">
 <b>🔴 right-size</b>
 </td></tr>
@@ -44,7 +40,6 @@ Consider fixing these issues, they don't align with your company's FinOps polici
   * Switch to Graviton instance type — save $600/year
 </td></tr>
 
-  
 <tr><td colspan="2" title="Failure">
 <b>🔴 drop-idle</b>
 </td></tr>
@@ -54,7 +49,7 @@ Consider fixing these issues, they don't align with your company's FinOps polici
   * Switch to Graviton instance type — save $600/year
 </td></tr>
 
-  </table>
+</table>
 
 <sub>
   This comment will be updated when code changes.

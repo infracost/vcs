@@ -4,7 +4,6 @@ Consider fixing this issue, it doesn't align with your company's FinOps policies
 
 <table>
   <tr><td colspan="2" width="1000px">FinOps policies</td></tr>
-  
 <tr><td colspan="2" title="Failure">
 <details >
 <summary>
@@ -20,7 +19,7 @@ Use GP3 volumes instead of GP2 for better performance.
   * This volume uses GP2, consider upgrading to GP3
 </td></tr>
 
-  </table>
+</table>
 
 <sub>
   This comment will be updated when code changes.

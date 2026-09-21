@@ -4,7 +4,6 @@ Consider fixing this issue, it doesn't align with your company's FinOps policies
 
 <table>
   <tr><td colspan="2" width="1000px">FinOps policies</td></tr>
-  
 <tr><td colspan="2" title="Failure">
 <details >
 <summary>
@@ -22,7 +21,7 @@ resource [`aws_instance.web`](https://github.com/my-org/my-repo/blob/def456/main
 in project `my-project`
 </td></tr>
 
-  </table>
+</table>
 
 <sub>
   This comment will be updated when code changes.
