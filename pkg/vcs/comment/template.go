@@ -663,9 +663,20 @@ type GovernanceTable struct {
 	// When true and CloudURL is non-empty, a "view all issues" link is rendered.
 	Truncated bool
 
+	// TruncatedCount is how many policies were omitted from this table.
+	TruncatedCount int
+
 	// CloudURL is the Infracost Cloud link for viewing all issues. It is empty
 	// when cloud is disabled, in which case no dashboard link is rendered.
 	CloudURL string
+}
+
+// TruncatedLabel returns the omitted policy count with pluralized "policy"/"policies".
+func (g GovernanceTable) TruncatedLabel() string {
+	if g.TruncatedCount == 1 {
+		return "1 more policy"
+	}
+	return fmt.Sprintf("%d more policies", g.TruncatedCount)
 }
 
 // GovernanceEntry represents a single policy violation row.

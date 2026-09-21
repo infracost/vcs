@@ -34,9 +34,14 @@
 {{- range .Entries }}
 {{- template "governanceEntry" . }}
 {{- end }}
-{{- if and .Truncated .CloudURL }}
+{{- if .Truncated }}
+{{- if .CloudURL }}
 
 ... view [all issues]({{ .CloudURL }}) in Infracost Cloud
+{{- else }}
+
+... and {{ .TruncatedLabel }} not shown
+{{- end }}
 {{- end }}
 {{- end }}
 

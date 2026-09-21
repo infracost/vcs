@@ -130,6 +130,7 @@ func (data *Data) processPolicyResults(inputs *Inputs, title string, results []*
 
 	if len(table.Entries) > GovernancePolicyLimit {
 		table.Truncated = true
+		table.TruncatedCount = len(table.Entries) - GovernancePolicyLimit
 		table.Entries = table.Entries[:GovernancePolicyLimit]
 	}
 
@@ -212,6 +213,7 @@ func (data *Data) processTaggingPolicyResults(inputs *Inputs, index taggingFailu
 
 	if len(table.Entries) > GovernancePolicyLimit {
 		table.Truncated = true
+		table.TruncatedCount = len(table.Entries) - GovernancePolicyLimit
 		table.Entries = table.Entries[:GovernancePolicyLimit]
 	}
 
@@ -263,6 +265,7 @@ func (data *Data) processGuardrailResults(inputs *Inputs) {
 
 	if len(table.Entries) > GovernancePolicyLimit {
 		table.Truncated = true
+		table.TruncatedCount = len(table.Entries) - GovernancePolicyLimit
 		table.Entries = table.Entries[:GovernancePolicyLimit]
 	}
 

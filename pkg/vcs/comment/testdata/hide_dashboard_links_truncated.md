@@ -49,6 +49,7 @@ Consider fixing these issues, they don't align with your company's FinOps polici
   * Switch to Graviton instance type — save $600/year
 </td></tr>
 
+  <tr><td colspan="2">... and 1 more policy not shown</td></tr>
 </table>
 
 <sub>
