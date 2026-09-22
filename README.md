@@ -138,6 +138,34 @@ The template receives a `comment.Data` struct and has access to the template fun
 
 You can also set `Options.Tag` to use a custom comment identifier (defaults to `"infracost-comment"`).
 
+### Markdown inside the HTML templates
+
+The default templates mix HTML tables with Markdown, and the two do not nest the
+way you would expect. A renderer stops reading Markdown at an opening HTML tag
+and only starts again after a blank line, so a value holding a code span or a
+link is printed as its own source when it sits on the same line as the tag:
+
+```html
+<td>Repo `my-repo`</td>
+```
+
+Open the cell, leave a blank line, then write the content:
+
+```html
+<td>
+
+Repo `my-repo`
+</td>
+```
+
+This is CommonMark's rule for HTML blocks, not a GitHub extension, so GitLab and
+Azure DevOps behave the same way. The `flat/` templates are plain Markdown with
+no HTML, so it does not apply to them.
+
+Watch for it whenever a value comes from `escapeAndFormatCode`, `mdCode` or any
+string built with a Markdown link — those are the ones that show up as backticks
+and brackets when the blank line is missing.
+
 ## Interface
 
 Any VCS provider implements:
