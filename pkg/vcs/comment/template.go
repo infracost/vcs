@@ -445,7 +445,7 @@ func (data *Data) processPreexistingIssues(inputs *Inputs, finopsIndex, security
 	}
 
 	inputs.PreexistingIssuesSentence = fmt.Sprintf(
-		"There %s(%s) in `%s`. %s with [Claude, VSCode, etc.](%s) - and climb your [org's leaderboard](%s) 🥇",
+		"There %s(%s) in `%s`. %s with [your AI coding agent](%s) - and climb your [org's leaderboard](%s) 🥇",
 		issueStr, repoURL, data.BaseBranchName, fixStr, engineerGuideURL, dashboardURL,
 	)
 }
