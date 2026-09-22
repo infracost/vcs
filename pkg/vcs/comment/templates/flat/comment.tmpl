@@ -21,10 +21,7 @@
 
 **{{ .CostChangeSentence }}**{{ if .CarbonWaterSummary }} {{ .CarbonWaterSummary }}{{ end }}
 {{- template "projectCosts" . }}
-{{- if .CostDetails }}
-
-Estimate details {{ with .CostDetailsMsg }}{{ . }} {{ end }}were left out because expandable comment sections are not supported here.
-{{- end }}
+{{- template "costDetails" . }}
 {{- end }}
 
 {{- if .PreexistingIssuesSentence }}

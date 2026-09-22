@@ -1,0 +1,6 @@
+{{- define "costDetails" }}
+{{- if .CostDetails }}
+
+Estimate details {{ with .CostDetailsMsg }}{{ . }} {{ end }}were left out because expandable comment sections are not supported here.
+{{- end }}
+{{- end }}

@@ -56,6 +56,14 @@ var FlatTemplate = template.Must(
 	template.New("comment.tmpl").Funcs(templateFuncs).ParseFS(templateFS, "templates/flat/*.tmpl"),
 )
 
+// FlatDetailsTemplate is FlatTemplate with the estimate details printed rather
+// than left out. The second pattern redefines costDetails only: a duplicate
+// name from a later parse wins, so the rest of the flat set stays shared.
+var FlatDetailsTemplate = template.Must(
+	template.New("comment.tmpl").Funcs(templateFuncs).
+		ParseFS(templateFS, "templates/flat/*.tmpl", "templates/flat_details/*.tmpl"),
+)
+
 var templateFuncs = template.FuncMap{
 	// mdCode renders a user-controlled value as an injection-safe inline
 	// code span, for values shown as code in a Markdown context. Values

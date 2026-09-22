@@ -1022,10 +1022,103 @@ func TestRenderFlat(t *testing.T) {
 				}
 			}
 
-			if n := utf8.RuneCountInString(got); n > tt.maxCommentSize {
-				t.Errorf("Render(FlatTemplate) = %d runes, over the %d limit", n, tt.maxCommentSize)
+			// Render was given SizeUnitBytes, so the assertion has to measure
+			// bytes: a multibyte body is longer than its rune count.
+			if n := measureLen(got, SizeUnitBytes); n > tt.maxCommentSize {
+				t.Errorf("Render(FlatTemplate) = %d bytes, over the %d limit", n, tt.maxCommentSize)
 			}
 		})
+	}
+}
+
+// FlatDetailsTemplate prints the details FlatTemplate omits, so it must clear
+// the same raw-HTML bar: a copy-pasted <details> would reach a Bitbucket
+// comment as literal text.
+func TestRenderFlatDetails(t *testing.T) {
+	for _, tt := range renderCases() {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Render(FlatDetailsTemplate, tt.maxCommentSize, SizeUnitBytes, githubSourceLink, tt.data)
+			if err != nil {
+				t.Fatalf("Render() error: %v", err)
+			}
+
+			for _, tag := range rawHTMLTags {
+				if strings.Contains(got, tag) {
+					t.Errorf("Render(FlatDetailsTemplate) contains raw HTML %q:\n%s", tag, got)
+				}
+			}
+
+			// Render was given SizeUnitBytes, so the assertion has to measure
+			// bytes: a multibyte body is longer than its rune count.
+			if n := measureLen(got, SizeUnitBytes); n > tt.maxCommentSize {
+				t.Errorf("Render(FlatDetailsTemplate) = %d bytes, over the %d limit", n, tt.maxCommentSize)
+			}
+		})
+	}
+}
+
+// Without this the no-raw-HTML test above would pass on a template that prints
+// nothing at all.
+func TestRenderFlatDetailsPrintsBreakdown(t *testing.T) {
+	data := Data{
+		Currency:             "USD",
+		TotalMonthlyCost:     rat.New(100),
+		PastTotalMonthlyCost: rat.New(50),
+		Projects: []ProjectResult{{
+			Name:                 "my-project",
+			TotalMonthlyCost:     rat.New(100),
+			PastTotalMonthlyCost: rat.New(50),
+			DiffBreakdown: &CostBreakdown{
+				TotalMonthlyCost: rat.New(50),
+				Resources:        []BreakdownResource{{Name: "aws_instance.web", MonthlyCost: rat.New(50)}},
+			},
+		}},
+	}
+
+	got, err := Render(FlatDetailsTemplate, 65000, SizeUnitRunes, githubSourceLink, data)
+	if err != nil {
+		t.Fatalf("Render() error: %v", err)
+	}
+	if !strings.Contains(got, "aws_instance.web") {
+		t.Errorf("Render(FlatDetailsTemplate) left the breakdown out:\n%s", got)
+	}
+	if strings.Contains(got, "were left out") {
+		t.Errorf("Render(FlatDetailsTemplate) said the details were left out:\n%s", got)
+	}
+
+	flat, err := Render(FlatTemplate, 65000, SizeUnitRunes, githubSourceLink, data)
+	if err != nil {
+		t.Fatalf("Render() error: %v", err)
+	}
+	if strings.Contains(flat, "aws_instance.web") {
+		t.Errorf("Render(FlatTemplate) printed the breakdown:\n%s", flat)
+	}
+}
+
+// A resource name is customer-authored and lands inside the details block, so a
+// fixed ``` fence would let it close the block and render as Markdown.
+func TestRenderFlatDetailsWidensTheFence(t *testing.T) {
+	data := Data{
+		Currency:             "USD",
+		TotalMonthlyCost:     rat.New(100),
+		PastTotalMonthlyCost: rat.New(50),
+		Projects: []ProjectResult{{
+			Name:                 "my-project",
+			TotalMonthlyCost:     rat.New(100),
+			PastTotalMonthlyCost: rat.New(50),
+			DiffBreakdown: &CostBreakdown{
+				TotalMonthlyCost: rat.New(50),
+				Resources:        []BreakdownResource{{Name: "aws_instance.```web", MonthlyCost: rat.New(50)}},
+			},
+		}},
+	}
+
+	got, err := Render(FlatDetailsTemplate, 65000, SizeUnitRunes, githubSourceLink, data)
+	if err != nil {
+		t.Fatalf("Render() error: %v", err)
+	}
+	if !strings.Contains(got, "````") {
+		t.Errorf("Render(FlatDetailsTemplate) did not widen the fence past the content:\n%s", got)
 	}
 }
 
@@ -1224,6 +1317,11 @@ func TestEmitsCostDetails(t *testing.T) {
 	}
 	if emitsCostDetails(FlatTemplate) {
 		t.Error("emitsCostDetails(FlatTemplate) = true, want false")
+	}
+	// Prints them, so it takes the details-truncation path rather than the
+	// whole-body cap.
+	if !emitsCostDetails(FlatDetailsTemplate) {
+		t.Error("emitsCostDetails(FlatDetailsTemplate) = false, want true")
 	}
 }
 
