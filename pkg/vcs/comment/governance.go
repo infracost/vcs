@@ -55,8 +55,10 @@ func (data *Data) processPolicyResults(inputs *Inputs, title string, results []*
 	}
 
 	table := GovernanceTable{
-		Title:    title,
-		CloudURL: data.runURL(),
+		Title:          title,
+		CloudURL:       data.runURL(),
+		ItemNoun:       "policy",
+		ItemNounPlural: "policies",
 	}
 
 	for _, result := range results {
@@ -130,6 +132,7 @@ func (data *Data) processPolicyResults(inputs *Inputs, title string, results []*
 
 	if len(table.Entries) > GovernancePolicyLimit {
 		table.Truncated = true
+		table.TruncatedCount = len(table.Entries) - GovernancePolicyLimit
 		table.Entries = table.Entries[:GovernancePolicyLimit]
 	}
 
@@ -145,8 +148,10 @@ func (data *Data) processTaggingPolicyResults(inputs *Inputs, index taggingFailu
 	}
 
 	table := GovernanceTable{
-		Title:    "Tagging policies",
-		CloudURL: data.runURL(),
+		Title:          "Tagging policies",
+		CloudURL:       data.runURL(),
+		ItemNoun:       "policy",
+		ItemNounPlural: "policies",
 	}
 
 	for _, result := range data.TaggingPolicyResults {
@@ -212,6 +217,7 @@ func (data *Data) processTaggingPolicyResults(inputs *Inputs, index taggingFailu
 
 	if len(table.Entries) > GovernancePolicyLimit {
 		table.Truncated = true
+		table.TruncatedCount = len(table.Entries) - GovernancePolicyLimit
 		table.Entries = table.Entries[:GovernancePolicyLimit]
 	}
 
@@ -235,8 +241,10 @@ func (data *Data) processGuardrailResults(inputs *Inputs) {
 	}
 
 	table := GovernanceTable{
-		Title:    "Guardrails",
-		CloudURL: data.runURL(),
+		Title:          "Guardrails",
+		CloudURL:       data.runURL(),
+		ItemNoun:       "guardrail",
+		ItemNounPlural: "guardrails",
 	}
 
 	for _, result := range data.GuardrailResults {
@@ -263,6 +271,7 @@ func (data *Data) processGuardrailResults(inputs *Inputs) {
 
 	if len(table.Entries) > GovernancePolicyLimit {
 		table.Truncated = true
+		table.TruncatedCount = len(table.Entries) - GovernancePolicyLimit
 		table.Entries = table.Entries[:GovernancePolicyLimit]
 	}
 
@@ -868,10 +877,6 @@ const (
 	gramsCO2PerCarKm             = 251
 )
 
-// infracostDevFixInIDEURL is the "Fix in your IDE" link shown inline on each
-// issue to promote Infracost Dev.
-const infracostDevFixInIDEURL = "https://cost.dev/?utm_source=pr_comment&utm_content=fix_in_ide"
-
 // formatFinopsIssueDescription formats a FinOps issue description with optional
 // savings and carbon/water metrics, matching the dashboard's fetchCommentPolicies
 // formatting logic.
@@ -898,12 +903,6 @@ func formatFinopsIssueDescription(issue *provider.FinopsResourceIssue, currency 
 			}
 		}
 	}
-
-	// Promote Infracost Dev: invite the user to remediate the issue in their IDE.
-	description = fmt.Sprintf(
-		"%s\n%s* 🔧 [Fix in your IDE](%s) — or ask your agent to apply it with Infracost Dev",
-		description, listIndent, infracostDevFixInIDEURL,
-	)
 
 	return description
 }

@@ -16,13 +16,19 @@ This pull request is aligned with your company's FinOps policies and the Well-Ar
   </thead>
   <tbody>
     <tr>
-      <td align="left" valign="top">Repo `my-repo`</td>
+      <td align="left" valign="top">
+
+Repo `my-repo`
+</td>
       <td align="right" valign="top">$600</td>
       <td align="right" valign="top"><strong>$200</strong></td>
       <td align="right" valign="top">$800</td>
     </tr>
       <tr>
-        <td colspan="4" align="left" valign="middle">Note: Repo cost estimates are based on baseline and usage costs configured within Infracost. See [our documentation](https://www.infracost.io/docs/features/usage_based_resources/) to learn more.</td>
+        <td colspan="4" align="left" valign="middle">
+
+Note: Repo cost estimates are based on baseline and usage costs configured within Infracost. See [our documentation](https://www.infracost.io/docs/features/usage_based_resources/) to learn more.
+</td>
       </tr>
   </tbody>
 </table>
@@ -37,17 +43,19 @@ This pull request is aligned with your company's FinOps policies and the Well-Ar
   <tbody>
     <tr>
       <td align="left" valign="top">
-        Tag `env: production`<br/>
-        <sub>From Jan 2026 till Dec 2026</sub>
-      </td>
+
+Tag `env: production`<br/>
+<sub>From Jan 2026 till Dec 2026</sub>
+</td>
       <td align="right" valign="top">$800</td>
       <td align="right" valign="top"><strong>$2,000 (60% left)</strong></td>
     </tr>
     <tr>
       <td align="left" valign="top">
-        Tag `team: frontend`<br/>
-        <sub>From Apr 2026 till Jun 2026</sub>
-      </td>
+
+Tag `team: frontend`<br/>
+<sub>From Apr 2026 till Jun 2026</sub>
+</td>
       <td align="right" valign="top">$400</td>
       <td align="right" valign="top"><strong>🔴 $300 (OVER)</strong></td>
     </tr>
@@ -58,7 +66,10 @@ This pull request is aligned with your company's FinOps policies and the Well-Ar
       <td colspan="3" align="left" valign="middle">🔴  Budget overrun detected</td>
     </tr>
     <tr>
-      <td colspan="3" align="left" valign="middle">Note: Tag-based actual costs are calculated using service provider cost data for the current budget period for all resources tagged with `env` and `team`.</td>
+      <td colspan="3" align="left" valign="middle">
+
+Note: Tag-based actual costs are calculated using service provider cost data for the current budget period for all resources tagged with `env` and `team`.
+</td>
     </tr>
   </tbody>
 </table>
@@ -116,8 +127,6 @@ No cloud resources were detected
   </details>
 
 </details>
-
-<hr/>
 
 <sub>
   This comment will be updated when code changes.

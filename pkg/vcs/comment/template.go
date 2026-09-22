@@ -382,7 +382,7 @@ func formatCostDetailsMsg(hasUnsupported, hasError bool) string {
 // counting total failed issues on the base branch and subtracting fixed issues.
 // See: dashboard/api/src/services/templates/partials/preexistingIssuesSentenceText.ts
 func (data *Data) processPreexistingIssues(inputs *Inputs, finopsIndex, securityIndex policyFailureIndex, taggingIndex taggingFailureIndex) {
-	if !data.CloudEnabled || data.BaseBranchName == "" || data.OrgSlug == "" || data.RepoID == "" {
+	if !data.CloudEnabled || data.BaseBranchName == "" || data.OrgSlug == "" || data.RepoID == "" || data.HideDashboardLinks {
 		return
 	}
 
@@ -445,16 +445,17 @@ func (data *Data) processPreexistingIssues(inputs *Inputs, finopsIndex, security
 	}
 
 	inputs.PreexistingIssuesSentence = fmt.Sprintf(
-		"There %s(%s) in `%s`. %s with [Claude, VSCode, etc.](%s) - and climb your [org's leaderboard](%s) 🥇",
+		"There %s(%s) in `%s`. %s with [your AI coding agent](%s) - and climb your [org's leaderboard](%s) 🥇",
 		issueStr, repoURL, data.BaseBranchName, fixStr, engineerGuideURL, dashboardURL,
 	)
 }
 
 // runURL returns the Infracost Cloud link to this run's dashboard page, or an
-// empty string when cloud is disabled or any required identifier is missing.
-// Callers should not render a dashboard link when this returns "".
+// empty string when cloud is disabled, any required identifier is missing, or
+// dashboard links are hidden. Callers should not render a dashboard link when
+// this returns "".
 func (data *Data) runURL() string {
-	if !data.CloudEnabled || data.OrgSlug == "" || data.RepoID == "" || data.RunID == "" {
+	if !data.CloudEnabled || data.OrgSlug == "" || data.RepoID == "" || data.RunID == "" || data.HideDashboardLinks {
 		return ""
 	}
 	return fmt.Sprintf(
@@ -510,7 +511,9 @@ type Inputs struct {
 	// UsageCostsMsg is a footnote about usage-based cost estimation.
 	UsageCostsMsg string
 
-	// EnableEnvironmentalMetricComment controls the CO₂e methodology link.
+	// EnableEnvironmentalMetricComment reports whether carbon estimates are on.
+	// The bundled templates do not print it; it is part of the data a custom
+	// template binds against.
 	EnableEnvironmentalMetricComment bool
 
 	// GovernanceSentence is a summary line about policy alignment, e.g.
@@ -660,9 +663,25 @@ type GovernanceTable struct {
 	// When true and CloudURL is non-empty, a "view all issues" link is rendered.
 	Truncated bool
 
+	// TruncatedCount is how many rows were omitted from this table.
+	TruncatedCount int
+
+	// ItemNoun and ItemNounPlural name what a row of this table is, so the
+	// truncation line reads in the table's own words.
+	ItemNoun       string
+	ItemNounPlural string
+
 	// CloudURL is the Infracost Cloud link for viewing all issues. It is empty
 	// when cloud is disabled, in which case no dashboard link is rendered.
 	CloudURL string
+}
+
+// TruncatedLabel returns the omitted row count with the table's own noun.
+func (g GovernanceTable) TruncatedLabel() string {
+	if g.TruncatedCount == 1 {
+		return "1 more " + g.ItemNoun
+	}
+	return fmt.Sprintf("%d more %s", g.TruncatedCount, g.ItemNounPlural)
 }
 
 // GovernanceEntry represents a single policy violation row.

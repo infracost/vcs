@@ -60,6 +60,7 @@ data := comment.Data{
 |---|---|---|
 | `EnableEnvironmentalMetrics` | `bool` | Show carbon emissions in the comment. |
 | `NeverShowCostEstimate` | `bool` | Suppress the cost details section entirely. |
+| `HideDashboardLinks` | `bool` | Drop everything linking to Infracost Cloud. |
 | `UsedUsageFile` | `bool` | Whether an `infracost-usage.yml` was used. |
 | `UsageAPIEnabled` | `bool` | Whether Infracost Cloud usage API estimates are enabled. |
 | `OrgSlug` | `string` | Organization slug for Infracost Cloud links. |
@@ -136,6 +137,34 @@ gh, err := github.New(ctx, owner, repo, token, pr, github.Options{
 The template receives a `comment.Data` struct and has access to the template functions defined in `template_funcs.go`.
 
 You can also set `Options.Tag` to use a custom comment identifier (defaults to `"infracost-comment"`).
+
+### Markdown inside the HTML templates
+
+The default templates mix HTML tables with Markdown, and the two do not nest the
+way you would expect. A renderer stops reading Markdown at an opening HTML tag
+and only starts again after a blank line, so a value holding a code span or a
+link is printed as its own source when it sits on the same line as the tag:
+
+```html
+<td>Repo `my-repo`</td>
+```
+
+Open the cell, leave a blank line, then write the content:
+
+```html
+<td>
+
+Repo `my-repo`
+</td>
+```
+
+This is CommonMark's rule for HTML blocks, not a GitHub extension, so GitLab and
+Azure DevOps behave the same way. The `flat/` templates are plain Markdown with
+no HTML, so it does not apply to them.
+
+Watch for it whenever a value comes from `escapeAndFormatCode`, `mdCode` or any
+string built with a Markdown link — those are the ones that show up as backticks
+and brackets when the blank line is missing.
 
 ## Interface
 

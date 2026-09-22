@@ -2,12 +2,11 @@
 
 <table>
   <tr><td colspan="2" width="1000px">Guardrails</td></tr>
-  
 <tr><td colspan="2" title="Blocking failure">
 <b>❌ Cost increase > $100</b>
 </td></tr>
 
-  </table>
+</table>
 <hr/>
 
 ## Cost changes &amp; budgets
@@ -23,7 +22,10 @@
   </thead>
   <tbody>
     <tr>
-      <td align="left" valign="top">Repo `my-repo`</td>
+      <td align="left" valign="top">
+
+Repo `my-repo`
+</td>
       <td align="right" valign="top">$100</td>
       <td align="right" valign="top"><strong>🔴 $400 (OVER)</strong></td>
       <td align="right" valign="top">$500</td>
@@ -32,7 +34,10 @@
         <td colspan="4" align="left" valign="middle">🔴  Cost anomaly guardrail triggered</td>
       </tr>
       <tr>
-        <td colspan="4" align="left" valign="middle">Note: Repo cost estimates are based on baseline and usage costs configured within Infracost. See [our documentation](https://www.infracost.io/docs/features/usage_based_resources/) to learn more.</td>
+        <td colspan="4" align="left" valign="middle">
+
+Note: Repo cost estimates are based on baseline and usage costs configured within Infracost. See [our documentation](https://www.infracost.io/docs/features/usage_based_resources/) to learn more.
+</td>
       </tr>
   </tbody>
 </table>
@@ -47,14 +52,18 @@
   <tbody>
     <tr>
       <td align="left" valign="top">
-        Tag `env: production`<br/>
-        <sub>From Jan 2026 till Dec 2026</sub>
-      </td>
+
+Tag `env: production`<br/>
+<sub>From Jan 2026 till Dec 2026</sub>
+</td>
       <td align="right" valign="top">$500</td>
       <td align="right" valign="top"><strong>$1,000 (50% left)</strong></td>
     </tr>
     <tr>
-      <td colspan="3" align="left" valign="middle">Note: Tag-based actual costs are calculated using service provider cost data for the current budget period for all resources tagged with `env`.</td>
+      <td colspan="3" align="left" valign="middle">
+
+Note: Tag-based actual costs are calculated using service provider cost data for the current budget period for all resources tagged with `env`.
+</td>
     </tr>
   </tbody>
 </table>
@@ -109,14 +118,6 @@ No cloud resources were detected
   </details>
 
 </details>
-
-<hr/>
-
-![Infracost Dev](https://img.shields.io/badge/Infracost-Dev-db2777?labelColor=000)
-
-**Let your coding agent remediate these.** Infracost Dev gives Cursor, Claude Code and Copilot your FinOps policies and live cloud pricing — so the next PR ships clean.
-
-[cost.dev](https://cost.dev/?utm_source=pr_comment&utm_content=infracost_dev_promo) · [Setup guide](https://www.infracost.io/docs/?utm_source=pr_comment&utm_content=infracost_dev_promo)
 
 <sub>
   This comment will be updated when code changes.

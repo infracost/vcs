@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"text/template"
 	"time"
 	"unicode/utf8"
 
@@ -493,6 +494,109 @@ func renderCases() []renderTestCase {
 			goldenFile: "environmental_metrics.md",
 		},
 		{
+			name:           "hide_dashboard_links",
+			maxCommentSize: 65000,
+			data: Data{
+				SupportsBotCommands:        true,
+				HideDashboardLinks:         true,
+				EnableEnvironmentalMetrics: true,
+				Currency:                   "USD",
+				TotalMonthlyCost:           rat.New(300),
+				PastTotalMonthlyCost:       rat.New(200),
+				CloudEnabled:               true,
+				OrgSlug:                    "my-org",
+				RepoID:                     "repo-123",
+				BaseBranchName:             "main",
+				Summary: ResourceSummary{
+					TotalDetectedResources:  1,
+					TotalSupportedResources: 1,
+				},
+				FinOpsPolicyResults: []*provider.FinopsPolicyResult{
+					{
+						PolicyName:                  "Use Graviton instances",
+						PolicySlug:                  "use-graviton",
+						PolicyMessage:               "Graviton instances are more energy efficient.",
+						IncludeInPullRequestComment: true,
+						FailingResources: []*provider.FinopsPolicyFailingResource{
+							{
+								Id:           "aws_instance.web",
+								CauseAddress: "aws_instance.web",
+								Issues: []*provider.FinopsResourceIssue{
+									{
+										Description:                   "Switch to Graviton instance type",
+										MonthlySavings:                rat.New(50).Proto(),
+										MonthlyCarbonSavingsGramsCo2E: rat.New(200000).Proto(),
+									},
+								},
+							},
+						},
+					},
+				},
+				PreviousFinOpsPolicyResults: []*provider.FinopsPolicyResult{
+					{
+						PolicyName:                  "Use reserved instances",
+						PolicySlug:                  "use-reserved",
+						IncludeInPullRequestComment: true,
+						FailingResources: []*provider.FinopsPolicyFailingResource{
+							{Id: "aws_instance.db"},
+						},
+					},
+				},
+				Projects: []ProjectResult{
+					{
+						Name:                 "my-project",
+						TotalMonthlyCost:     rat.New(300),
+						PastTotalMonthlyCost: rat.New(200),
+						Breakdown: &CostBreakdown{
+							TotalMonthlyCost: rat.New(300),
+							Resources: []BreakdownResource{
+								{Name: "aws_instance.web", MonthlyCost: rat.New(300)},
+							},
+						},
+						PastBreakdown: &CostBreakdown{
+							TotalMonthlyCost: rat.New(200),
+							Resources: []BreakdownResource{
+								{Name: "aws_instance.web", MonthlyCost: rat.New(200)},
+							},
+						},
+						DiffBreakdown: &CostBreakdown{
+							TotalMonthlyCost: rat.New(100),
+							Resources: []BreakdownResource{
+								{Name: "aws_instance.web", MonthlyCost: rat.New(100)},
+							},
+						},
+					},
+				},
+			},
+			goldenFile: "hide_dashboard_links.md",
+		},
+		{
+			// Six policies against the table's limit of five, so the truncated
+			// table would carry its "view all issues" run link.
+			name:           "hide_dashboard_links_truncated",
+			maxCommentSize: 65000,
+			data: Data{
+				SupportsBotCommands: true,
+				HideDashboardLinks:  true,
+				Currency:            "USD",
+				TotalMonthlyCost:    rat.New(300),
+				CloudEnabled:        true,
+				OrgSlug:             "my-org",
+				RepoID:              "repo-123",
+				RunID:               "run-456",
+				BaseBranchName:      "main",
+				FinOpsPolicyResults: []*provider.FinopsPolicyResult{
+					failingPolicy("use-graviton", "aws_instance.a"),
+					failingPolicy("use-reserved", "aws_instance.b"),
+					failingPolicy("use-gp3", "aws_instance.c"),
+					failingPolicy("right-size", "aws_instance.d"),
+					failingPolicy("drop-idle", "aws_instance.e"),
+					failingPolicy("use-spot", "aws_instance.f"),
+				},
+			},
+			goldenFile: "hide_dashboard_links_truncated.md",
+		},
+		{
 			name:           "governance_tagging",
 			maxCommentSize: 65000,
 			data: Data{
@@ -974,6 +1078,25 @@ func renderCases() []renderTestCase {
 	}
 }
 
+// failingPolicy is one policy with one failing resource, for cases needing more
+// policies than the table shows.
+func failingPolicy(slug, address string) *provider.FinopsPolicyResult {
+	return &provider.FinopsPolicyResult{
+		PolicyName:                  slug,
+		PolicySlug:                  slug,
+		IncludeInPullRequestComment: true,
+		FailingResources: []*provider.FinopsPolicyFailingResource{
+			{
+				Id:           address,
+				CauseAddress: address,
+				Issues: []*provider.FinopsResourceIssue{
+					{Description: "Switch to Graviton instance type", MonthlySavings: rat.New(50).Proto()},
+				},
+			},
+		},
+	}
+}
+
 func TestRender(t *testing.T) {
 	for _, tt := range renderCases() {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1027,6 +1150,11 @@ func TestRenderFlat(t *testing.T) {
 			if n := measureLen(got, SizeUnitBytes); n > tt.maxCommentSize {
 				t.Errorf("Render(FlatTemplate) = %d bytes, over the %d limit", n, tt.maxCommentSize)
 			}
+
+			// The flat tree has no golden of its own, so the flag is asserted here.
+			if tt.data.HideDashboardLinks && strings.Contains(got, "dashboard.infracost.io") {
+				t.Errorf("Render(FlatTemplate) contains a dashboard link:\n%s", got)
+			}
 		})
 	}
 }
@@ -1052,6 +1180,41 @@ func TestRenderFlatDetails(t *testing.T) {
 			// bytes: a multibyte body is longer than its rune count.
 			if n := measureLen(got, SizeUnitBytes); n > tt.maxCommentSize {
 				t.Errorf("Render(FlatDetailsTemplate) = %d bytes, over the %d limit", n, tt.maxCommentSize)
+			}
+
+			// This template prints the details block, which carries the usage
+			// costs footnote the other flat template leaves out.
+			if tt.data.HideDashboardLinks && strings.Contains(got, "dashboard.infracost.io") {
+				t.Errorf("Render(FlatDetailsTemplate) contains a dashboard link:\n%s", got)
+			}
+		})
+	}
+}
+
+// The table marks its usage-cost column with an asterisk pointing at a
+// footnote. HideDashboardLinks removes that footnote, so the marker goes too.
+func TestRenderDropsUsageAsteriskWithTheFootnote(t *testing.T) {
+	var data Data
+	for _, tt := range renderCases() {
+		if tt.name == "hide_dashboard_links" {
+			data = tt.data
+		}
+	}
+
+	for _, tmpl := range []struct {
+		name string
+		tmpl *template.Template
+	}{{"default", DefaultTemplate}, {"flat", FlatTemplate}, {"flatDetails", FlatDetailsTemplate}} {
+		t.Run(tmpl.name, func(t *testing.T) {
+			got, err := Render(tmpl.tmpl, 65000, SizeUnitRunes, githubSourceLink, data)
+			if err != nil {
+				t.Fatalf("Render() error: %v", err)
+			}
+
+			for _, marker := range []string{"Usage cost</span>*", "Usage cost*"} {
+				if strings.Contains(got, marker) {
+					t.Errorf("Render() kept %q with no footnote below it:\n%s", marker, got)
+				}
 			}
 		})
 	}

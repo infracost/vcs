@@ -4,7 +4,6 @@ Consider fixing this issue, it doesn't align with your company's FinOps policies
 
 <table>
   <tr><td colspan="2" width="1000px">FinOps policies</td></tr>
-  
 <tr><td colspan="2" title="Failure">
 <details >
 <summary>
@@ -20,10 +19,9 @@ Graviton instances are more energy efficient.
   * Switch to Graviton instance type
     * 💰 save $600/year
     * 🌱 avoid 2.40 t CO₂e - that's more than 16 flights between London & Paris
-    * 🔧 [Fix in your IDE](https://cost.dev/?utm_source=pr_comment&utm_content=fix_in_ide) — or ask your agent to apply it with Infracost Dev
 </td></tr>
 
-  </table>
+</table>
 <details >
   <summary><b>Monthly estimate increased by $100 📈</b> (🌱 emits 500.0 kg CO₂e - that's more than 3.3 flights between London & Paris)</summary>
   <br/>
@@ -49,8 +47,6 @@ Graviton instances are more energy efficient.
 
 
 *Usage costs can be estimated by updating Infracost Cloud settings, see [docs](https://www.infracost.io/docs/features/usage_based_resources/#infracost-usageyml) for other options.
-
-**The methodology for calculating the CO₂e impact of your changes is explained [in our docs](https://www.infracost.io/docs/infracost_cloud/infracarbon).
   <details>
   <summary>Estimate details </summary>
 
@@ -78,14 +74,6 @@ Key: * usage cost, ~ changed, + added, - removed
   </details>
 
 </details>
-
-<hr/>
-
-![Infracost Dev](https://img.shields.io/badge/Infracost-Dev-db2777?labelColor=000)
-
-**Let your coding agent remediate these.** Infracost Dev gives Cursor, Claude Code and Copilot your FinOps policies and live cloud pricing — so the next PR ships clean.
-
-[cost.dev](https://cost.dev/?utm_source=pr_comment&utm_content=infracost_dev_promo) · [Setup guide](https://www.infracost.io/docs/?utm_source=pr_comment&utm_content=infracost_dev_promo)
 
 <sub>
   This comment will be updated when code changes.

@@ -16,7 +16,10 @@
   <tbody>
     {{- range .BudgetCostRows }}
     <tr>
-      <td align="left" valign="top">{{ .Label }}</td>
+      <td align="left" valign="top">
+
+{{ .Label }}
+</td>
       <td align="right" valign="top">{{ .PreviousCost }}</td>
       <td align="right" valign="top"><strong>{{ .CostChange }}</strong></td>
       <td align="right" valign="top">{{ .NewCost }}</td>
@@ -29,7 +32,10 @@
     {{- end }}
     {{- if .BudgetCostNote }}
       <tr>
-        <td colspan="4" align="left" valign="middle">{{ .BudgetCostNote }}</td>
+        <td colspan="4" align="left" valign="middle">
+
+{{ .BudgetCostNote }}
+</td>
       </tr>
     {{- end }}
   </tbody>
@@ -48,9 +54,10 @@
     {{- range .BudgetRows }}
     <tr>
       <td align="left" valign="top">
-        {{ .Scope }}<br/>
-        <sub>From {{ .StartDate }} till {{ .EndDate }}</sub>
-      </td>
+
+{{ .Scope }}<br/>
+<sub>From {{ .StartDate }} till {{ .EndDate }}</sub>
+</td>
       <td align="right" valign="top">{{ .CurrentCost }}</td>
       <td align="right" valign="top"><strong>{{ .Budget }}</strong></td>
     </tr>
@@ -67,7 +74,10 @@
     {{- end }}
     {{- if $.BudgetTagNote }}
     <tr>
-      <td colspan="3" align="left" valign="middle">{{ $.BudgetTagNote }}</td>
+      <td colspan="3" align="left" valign="middle">
+
+{{ $.BudgetTagNote }}
+</td>
     </tr>
     {{- end }}
   </tbody>
