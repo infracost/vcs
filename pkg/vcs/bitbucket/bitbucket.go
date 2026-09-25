@@ -193,30 +193,32 @@ func (b *Bitbucket) updateComment(ctx context.Context, body string, validAt *tim
 		latest := comments[len(comments)-1]
 
 		if latestValidAt := footerValidAt(latest.body, validAt); validAt != nil && latestValidAt != nil && validAt.Before(*latestValidAt) {
-			return vcs.PostResult{SkipReason: fmt.Sprintf("not updating comment since the latest one is newer: %s", latest.url)}, nil
+			return vcs.PostResult{Body: latest.body, URL: latest.url, SkipReason: fmt.Sprintf("not updating comment since the latest one is newer: %s", latest.url)}, nil
 		}
 
 		if latest.body == body {
-			return vcs.PostResult{SkipReason: fmt.Sprintf("not updating comment since the latest one matches exactly: %s", latest.url)}, nil
+			return vcs.PostResult{Body: latest.body, URL: latest.url, SkipReason: fmt.Sprintf("not updating comment since the latest one matches exactly: %s", latest.url)}, nil
 		}
 
 		if err := b.api.updateComment(ctx, latest, body); err != nil {
 			return vcs.PostResult{}, err
 		}
-		return vcs.PostResult{Posted: true}, nil
+		return vcs.PostResult{Posted: true, Body: body, URL: latest.url}, nil
 	}
 
-	if _, err := b.api.createComment(ctx, body); err != nil {
+	created, err := b.api.createComment(ctx, body)
+	if err != nil {
 		return vcs.PostResult{}, err
 	}
-	return vcs.PostResult{Posted: true}, nil
+	return vcs.PostResult{Posted: true, Body: body, URL: created.url}, nil
 }
 
 func (b *Bitbucket) newComment(ctx context.Context, body string) (vcs.PostResult, error) {
-	if _, err := b.api.createComment(ctx, body); err != nil {
+	created, err := b.api.createComment(ctx, body)
+	if err != nil {
 		return vcs.PostResult{}, err
 	}
-	return vcs.PostResult{Posted: true}, nil
+	return vcs.PostResult{Posted: true, Body: body, URL: created.url}, nil
 }
 
 func (b *Bitbucket) deleteAndNewComment(ctx context.Context, body string, validAt *time.Time) (vcs.PostResult, error) {
@@ -228,7 +230,7 @@ func (b *Bitbucket) deleteAndNewComment(ctx context.Context, body string, validA
 	if len(comments) > 0 && validAt != nil {
 		latest := comments[len(comments)-1]
 		if latestValidAt := footerValidAt(latest.body, validAt); latestValidAt != nil && validAt.Before(*latestValidAt) {
-			return vcs.PostResult{SkipReason: fmt.Sprintf("not adding comment since the latest one is newer: %s", latest.url)}, nil
+			return vcs.PostResult{Body: latest.body, URL: latest.url, SkipReason: fmt.Sprintf("not adding comment since the latest one is newer: %s", latest.url)}, nil
 		}
 	}
 
@@ -241,10 +243,11 @@ func (b *Bitbucket) deleteAndNewComment(ctx context.Context, body string, validA
 		}
 	}
 
-	if _, err := b.api.createComment(ctx, body); err != nil {
+	created, err := b.api.createComment(ctx, body)
+	if err != nil {
 		return vcs.PostResult{}, err
 	}
-	return vcs.PostResult{Posted: true}, nil
+	return vcs.PostResult{Posted: true, Body: body, URL: created.url}, nil
 }
 
 // isNotFound reports whether err is a 404 from the Bitbucket API.

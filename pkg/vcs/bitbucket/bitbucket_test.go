@@ -237,6 +237,9 @@ func TestPostCommentSkipsIdenticalComment(t *testing.T) {
 	if res.Posted || !strings.Contains(res.SkipReason, "matches exactly") {
 		t.Errorf("updateComment() = %+v, want an identical-content skip", res)
 	}
+	if res.Body != body || res.URL != srv.URL+"/pullrequests/1/comments/7" {
+		t.Errorf("updateComment() result = %+v, want the existing comment", res)
+	}
 }
 
 func TestPostCommentSkipsNewerComment(t *testing.T) {

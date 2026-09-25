@@ -152,30 +152,32 @@ func (g *GitLab) updateComment(ctx context.Context, body string, validAt *time.T
 		latest := comments[len(comments)-1]
 
 		if latestValidAt := vcs.ExtractValidAt(latest.body); validAt != nil && latestValidAt != nil && validAt.Before(*latestValidAt) {
-			return vcs.PostResult{SkipReason: fmt.Sprintf("not updating comment since the latest one is newer: %s", latest.url)}, nil
+			return vcs.PostResult{Body: latest.body, URL: latest.url, SkipReason: fmt.Sprintf("not updating comment since the latest one is newer: %s", latest.url)}, nil
 		}
 
 		if latest.body == body {
-			return vcs.PostResult{SkipReason: fmt.Sprintf("not updating comment since the latest one matches exactly: %s", latest.url)}, nil
+			return vcs.PostResult{Body: latest.body, URL: latest.url, SkipReason: fmt.Sprintf("not updating comment since the latest one matches exactly: %s", latest.url)}, nil
 		}
 
 		if err := g.callUpdateComment(ctx, latest, body); err != nil {
 			return vcs.PostResult{}, err
 		}
-		return vcs.PostResult{Posted: true}, nil
+		return vcs.PostResult{Posted: true, Body: body, URL: latest.url}, nil
 	}
 
-	if _, err := g.callCreateComment(ctx, body); err != nil {
+	created, err := g.callCreateComment(ctx, body)
+	if err != nil {
 		return vcs.PostResult{}, err
 	}
-	return vcs.PostResult{Posted: true}, nil
+	return vcs.PostResult{Posted: true, Body: body, URL: created.url}, nil
 }
 
 func (g *GitLab) newComment(ctx context.Context, body string) (vcs.PostResult, error) {
-	if _, err := g.callCreateComment(ctx, body); err != nil {
+	created, err := g.callCreateComment(ctx, body)
+	if err != nil {
 		return vcs.PostResult{}, err
 	}
-	return vcs.PostResult{Posted: true}, nil
+	return vcs.PostResult{Posted: true, Body: body, URL: created.url}, nil
 }
 
 func (g *GitLab) deleteAndNewComment(ctx context.Context, body string, validAt *time.Time) (vcs.PostResult, error) {
@@ -187,7 +189,7 @@ func (g *GitLab) deleteAndNewComment(ctx context.Context, body string, validAt *
 	if len(comments) > 0 && validAt != nil {
 		latest := comments[len(comments)-1]
 		if latestValidAt := vcs.ExtractValidAt(latest.body); latestValidAt != nil && validAt.Before(*latestValidAt) {
-			return vcs.PostResult{SkipReason: fmt.Sprintf("not adding comment since the latest one is newer: %s", latest.url)}, nil
+			return vcs.PostResult{Body: latest.body, URL: latest.url, SkipReason: fmt.Sprintf("not adding comment since the latest one is newer: %s", latest.url)}, nil
 		}
 	}
 
@@ -197,10 +199,11 @@ func (g *GitLab) deleteAndNewComment(ctx context.Context, body string, validAt *
 		}
 	}
 
-	if _, err := g.callCreateComment(ctx, body); err != nil {
+	created, err := g.callCreateComment(ctx, body)
+	if err != nil {
 		return vcs.PostResult{}, err
 	}
-	return vcs.PostResult{Posted: true}, nil
+	return vcs.PostResult{Posted: true, Body: body, URL: created.url}, nil
 }
 
 // gitlabComment represents a comment found on a GitLab merge request.
