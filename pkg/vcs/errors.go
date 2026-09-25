@@ -30,8 +30,8 @@ type PostError struct {
 	// return for rate limiting.
 	Retryable bool
 
-	// RetryAfter is how long the server asked us to wait before retrying, parsed
-	// from the Retry-After header. It is 0 when no such hint was provided.
+	// RetryAfter is the Retry-After header, or time until an exhausted budget resets.
+	// Derived values are capped at maxRetryAfter; it is 0 with no usable hint.
 	RetryAfter time.Duration
 
 	// Err is the underlying error.
@@ -60,11 +60,12 @@ func HTTPPostError(statusCode int, header http.Header, err error) error {
 		return nil
 	}
 
-	retryAfter := parseRetryAfter(header)
+	retryAfter, resetAt, exhausted := rateLimitHints(header)
+	delay := retryDelay(retryAfter, resetAt)
 	return &PostError{
 		StatusCode: statusCode,
-		Retryable:  retryableStatus(statusCode) || retryAfter > 0 || rateLimitExhausted(header),
-		RetryAfter: retryAfter,
+		Retryable:  retryableStatus(statusCode) || delay > 0 || exhausted,
+		RetryAfter: delay,
 		Err:        err,
 	}
 }
@@ -130,26 +131,69 @@ func parseRetryAfter(header http.Header) time.Duration {
 	return 0
 }
 
-// rateLimitExhausted reports whether a rate-limit-remaining header is present
-// and reads as zero. GitHub uses X-RateLimit-Remaining and GitLab uses
-// RateLimit-Remaining; both return HTTP 200 with a GraphQL error when a primary
-// rate limit is hit, so this is the only reliable retry signal in that case.
-func rateLimitExhausted(header http.Header) bool {
+// maxRetryAfter caps a reset-derived delay to GitHub's longest primary window.
+// A GHES instance, self-hosted GitLab, or proxy can send a far-future reset.
+const maxRetryAfter = time.Hour
+
+// rateLimitHints returns the Retry-After hint, reset time, and exhaustion state.
+// GitHub uses X-RateLimit-* names and GitLab un-prefixed names; GraphQL APIs can
+// return a primary rate limit as HTTP 200, so these headers are the retry signal.
+func rateLimitHints(header http.Header) (time.Duration, time.Time, bool) {
+	retryAfter := parseRetryAfter(header)
 	if header == nil {
-		return false
+		return retryAfter, time.Time{}, false
 	}
 
-	for _, name := range []string{"X-RateLimit-Remaining", "RateLimit-Remaining"} {
-		v := header.Get(name)
-		if v == "" {
+	// Reset is read with the same prefix as the Remaining that matched, so a
+	// GitHub response is never measured against a GitLab-shaped reset.
+	for _, prefix := range []string{"X-RateLimit-", "RateLimit-"} {
+		if n, err := strconv.Atoi(header.Get(prefix + "Remaining")); err != nil || n != 0 {
 			continue
 		}
-		if n, err := strconv.Atoi(v); err == nil && n <= 0 {
-			return true
+		// A zeroed limit is not a real budget: GitHub zeroes the whole set on auth
+		// failures, where retrying cannot help.
+		if n, err := strconv.Atoi(header.Get(prefix + "Limit")); err == nil && n <= 0 {
+			continue
 		}
+		return retryAfter, rateLimitReset(header, prefix), true
 	}
 
-	return false
+	return retryAfter, time.Time{}, false
+}
+
+// rateLimitReset converts a <prefix>Reset epoch value into local time.
+// It uses the response Date to avoid clock skew and returns zero if unparseable.
+func rateLimitReset(header http.Header, prefix string) time.Time {
+	secs, err := strconv.ParseInt(header.Get(prefix+"Reset"), 10, 64)
+	if err != nil {
+		return time.Time{}
+	}
+
+	reset := time.Unix(secs, 0)
+	if date, err := http.ParseTime(header.Get("Date")); err == nil {
+		return time.Now().Add(reset.Sub(date))
+	}
+
+	return reset
+}
+
+// retryDelay picks the wait to report: an explicit Retry-After wins, otherwise
+// the time until resetAt, capped at maxRetryAfter. A reset that has already
+// passed gives 0, which is right — the window has rolled over.
+func retryDelay(retryAfter time.Duration, resetAt time.Time) time.Duration {
+	if retryAfter > 0 || resetAt.IsZero() {
+		return retryAfter
+	}
+
+	d := time.Until(resetAt)
+	if d <= 0 {
+		return 0
+	}
+	if d > maxRetryAfter {
+		return maxRetryAfter
+	}
+
+	return d
 }
 
 // StatusRecorder is an http.RoundTripper that remembers the outcome of the most
@@ -170,6 +214,9 @@ type recorded struct {
 	statusCode  int
 	transportEr bool
 	retryAfter  time.Duration
+	// resetAt is absolute so that the wait cannot go stale between RoundTrip and
+	// WrapError.
+	resetAt     time.Time
 	rateLimited bool
 }
 
@@ -185,10 +232,12 @@ func (s *StatusRecorder) RoundTrip(req *http.Request) (*http.Response, error) {
 	if err != nil {
 		s.last = recorded{transportEr: true}
 	} else {
+		retryAfter, resetAt, exhausted := rateLimitHints(resp.Header)
 		s.last = recorded{
 			statusCode:  resp.StatusCode,
-			retryAfter:  parseRetryAfter(resp.Header),
-			rateLimited: rateLimitExhausted(resp.Header),
+			retryAfter:  retryAfter,
+			resetAt:     resetAt,
+			rateLimited: exhausted,
 		}
 	}
 	s.mu.Unlock()
@@ -213,10 +262,11 @@ func (s *StatusRecorder) WrapError(err error) error {
 		return RetryablePostError(err)
 	}
 
+	delay := retryDelay(last.retryAfter, last.resetAt)
 	return &PostError{
 		StatusCode: last.statusCode,
-		Retryable:  retryableStatus(last.statusCode) || last.retryAfter > 0 || last.rateLimited,
-		RetryAfter: last.retryAfter,
+		Retryable:  retryableStatus(last.statusCode) || delay > 0 || last.rateLimited,
+		RetryAfter: delay,
 		Err:        err,
 	}
 }
