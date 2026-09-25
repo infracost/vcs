@@ -149,30 +149,32 @@ func (a *Azure) updateComment(ctx context.Context, body string, validAt *time.Ti
 		latest := comments[len(comments)-1]
 
 		if latestValidAt := vcs.ExtractValidAt(latest.body); validAt != nil && latestValidAt != nil && validAt.Before(*latestValidAt) {
-			return vcs.PostResult{SkipReason: fmt.Sprintf("not updating comment since the latest one is newer: %s", latest.href)}, nil
+			return vcs.PostResult{Body: latest.body, URL: latest.href, SkipReason: fmt.Sprintf("not updating comment since the latest one is newer: %s", latest.href)}, nil
 		}
 
 		if latest.body == body {
-			return vcs.PostResult{SkipReason: fmt.Sprintf("not updating comment since the latest one matches exactly: %s", latest.href)}, nil
+			return vcs.PostResult{Body: latest.body, URL: latest.href, SkipReason: fmt.Sprintf("not updating comment since the latest one matches exactly: %s", latest.href)}, nil
 		}
 
 		if err := a.callUpdateComment(ctx, latest, body); err != nil {
 			return vcs.PostResult{}, err
 		}
-		return vcs.PostResult{Posted: true}, nil
+		return vcs.PostResult{Posted: true, Body: body, URL: latest.href}, nil
 	}
 
-	if _, err := a.callCreateComment(ctx, body); err != nil {
+	created, err := a.callCreateComment(ctx, body)
+	if err != nil {
 		return vcs.PostResult{}, err
 	}
-	return vcs.PostResult{Posted: true}, nil
+	return vcs.PostResult{Posted: true, Body: body, URL: created.href}, nil
 }
 
 func (a *Azure) newComment(ctx context.Context, body string) (vcs.PostResult, error) {
-	if _, err := a.callCreateComment(ctx, body); err != nil {
+	created, err := a.callCreateComment(ctx, body)
+	if err != nil {
 		return vcs.PostResult{}, err
 	}
-	return vcs.PostResult{Posted: true}, nil
+	return vcs.PostResult{Posted: true, Body: body, URL: created.href}, nil
 }
 
 func (a *Azure) deleteAndNewComment(ctx context.Context, body string, validAt *time.Time) (vcs.PostResult, error) {
@@ -184,7 +186,7 @@ func (a *Azure) deleteAndNewComment(ctx context.Context, body string, validAt *t
 	if len(comments) > 0 && validAt != nil {
 		latest := comments[len(comments)-1]
 		if latestValidAt := vcs.ExtractValidAt(latest.body); latestValidAt != nil && validAt.Before(*latestValidAt) {
-			return vcs.PostResult{SkipReason: fmt.Sprintf("not adding comment since the latest one is newer: %s", latest.href)}, nil
+			return vcs.PostResult{Body: latest.body, URL: latest.href, SkipReason: fmt.Sprintf("not adding comment since the latest one is newer: %s", latest.href)}, nil
 		}
 	}
 
@@ -194,10 +196,11 @@ func (a *Azure) deleteAndNewComment(ctx context.Context, body string, validAt *t
 		}
 	}
 
-	if _, err := a.callCreateComment(ctx, body); err != nil {
+	created, err := a.callCreateComment(ctx, body)
+	if err != nil {
 		return vcs.PostResult{}, err
 	}
-	return vcs.PostResult{Posted: true}, nil
+	return vcs.PostResult{Posted: true, Body: body, URL: created.href}, nil
 }
 
 // azureComment represents an Azure Repos comment we care about (the top-level

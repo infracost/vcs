@@ -134,30 +134,32 @@ func (g *GitHub) updateComment(ctx context.Context, body string, validAt *time.T
 		latest := comments[len(comments)-1]
 
 		if latestValidAt := vcs.ExtractValidAt(latest.body); validAt != nil && latestValidAt != nil && validAt.Before(*latestValidAt) {
-			return vcs.PostResult{SkipReason: fmt.Sprintf("not updating comment since the latest one is newer: %s", latest.url)}, nil
+			return vcs.PostResult{Body: latest.body, URL: latest.url, SkipReason: fmt.Sprintf("not updating comment since the latest one is newer: %s", latest.url)}, nil
 		}
 
 		if latest.body == body {
-			return vcs.PostResult{SkipReason: fmt.Sprintf("not updating comment since the latest one matches exactly: %s", latest.url)}, nil
+			return vcs.PostResult{Body: latest.body, URL: latest.url, SkipReason: fmt.Sprintf("not updating comment since the latest one matches exactly: %s", latest.url)}, nil
 		}
 
 		if err := g.callUpdateComment(ctx, latest, body); err != nil {
 			return vcs.PostResult{}, err
 		}
-		return vcs.PostResult{Posted: true}, nil
+		return vcs.PostResult{Posted: true, Body: body, URL: latest.url}, nil
 	}
 
-	if err := g.callCreateComment(ctx, body); err != nil {
+	created, err := g.callCreateComment(ctx, body)
+	if err != nil {
 		return vcs.PostResult{}, err
 	}
-	return vcs.PostResult{Posted: true}, nil
+	return vcs.PostResult{Posted: true, Body: body, URL: created.url}, nil
 }
 
 func (g *GitHub) newComment(ctx context.Context, body string) (vcs.PostResult, error) {
-	if err := g.callCreateComment(ctx, body); err != nil {
+	created, err := g.callCreateComment(ctx, body)
+	if err != nil {
 		return vcs.PostResult{}, err
 	}
-	return vcs.PostResult{Posted: true}, nil
+	return vcs.PostResult{Posted: true, Body: body, URL: created.url}, nil
 }
 
 func (g *GitHub) hideAndNewComment(ctx context.Context, body string, validAt *time.Time) (vcs.PostResult, error) {
@@ -169,7 +171,7 @@ func (g *GitHub) hideAndNewComment(ctx context.Context, body string, validAt *ti
 	if len(comments) > 0 && validAt != nil {
 		latest := comments[len(comments)-1]
 		if latestValidAt := vcs.ExtractValidAt(latest.body); latestValidAt != nil && validAt.Before(*latestValidAt) {
-			return vcs.PostResult{SkipReason: fmt.Sprintf("not adding comment since the latest one is newer: %s", latest.url)}, nil
+			return vcs.PostResult{Body: latest.body, URL: latest.url, SkipReason: fmt.Sprintf("not adding comment since the latest one is newer: %s", latest.url)}, nil
 		}
 	}
 
@@ -181,10 +183,11 @@ func (g *GitHub) hideAndNewComment(ctx context.Context, body string, validAt *ti
 		}
 	}
 
-	if err := g.callCreateComment(ctx, body); err != nil {
+	created, err := g.callCreateComment(ctx, body)
+	if err != nil {
 		return vcs.PostResult{}, err
 	}
-	return vcs.PostResult{Posted: true}, nil
+	return vcs.PostResult{Posted: true, Body: body, URL: created.url}, nil
 }
 
 func (g *GitHub) deleteAndNewComment(ctx context.Context, body string, validAt *time.Time) (vcs.PostResult, error) {
@@ -196,7 +199,7 @@ func (g *GitHub) deleteAndNewComment(ctx context.Context, body string, validAt *
 	if len(comments) > 0 && validAt != nil {
 		latest := comments[len(comments)-1]
 		if latestValidAt := vcs.ExtractValidAt(latest.body); latestValidAt != nil && validAt.Before(*latestValidAt) {
-			return vcs.PostResult{SkipReason: fmt.Sprintf("not adding comment since the latest one is newer: %s", latest.url)}, nil
+			return vcs.PostResult{Body: latest.body, URL: latest.url, SkipReason: fmt.Sprintf("not adding comment since the latest one is newer: %s", latest.url)}, nil
 		}
 	}
 
@@ -206,10 +209,11 @@ func (g *GitHub) deleteAndNewComment(ctx context.Context, body string, validAt *
 		}
 	}
 
-	if err := g.callCreateComment(ctx, body); err != nil {
+	created, err := g.callCreateComment(ctx, body)
+	if err != nil {
 		return vcs.PostResult{}, err
 	}
-	return vcs.PostResult{Posted: true}, nil
+	return vcs.PostResult{Posted: true, Body: body, URL: created.url}, nil
 }
 
 // githubComment represents a comment found on a GitHub pull request.
@@ -308,22 +312,29 @@ func (g *GitHub) getPRNodeID(ctx context.Context) (string, error) {
 	return g.prNodeID, nil
 }
 
-func (g *GitHub) callCreateComment(ctx context.Context, body string) error {
+func (g *GitHub) callCreateComment(ctx context.Context, body string) (githubComment, error) {
 	prNodeID, err := g.getPRNodeID(ctx)
 	if err != nil {
-		return err
+		return githubComment{}, err
 	}
 
 	var m struct {
 		AddComment struct {
-			ClientMutationId githubv4.ID //nolint
+			CommentEdge struct {
+				Node struct {
+					URL githubv4.URI
+				}
+			}
 		} `graphql:"addComment(input: $input)"`
 	}
 	input := githubv4.AddCommentInput{
 		SubjectID: githubv4.ID(prNodeID),
 		Body:      githubv4.String(body),
 	}
-	return g.recorder.WrapError(g.client.Mutate(ctx, &m, input, nil))
+	if err := g.recorder.WrapError(g.client.Mutate(ctx, &m, input, nil)); err != nil {
+		return githubComment{}, err
+	}
+	return githubComment{url: m.AddComment.CommentEdge.Node.URL.String()}, nil
 }
 
 func (g *GitHub) callUpdateComment(ctx context.Context, c githubComment, body string) error {

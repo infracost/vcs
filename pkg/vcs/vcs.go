@@ -31,6 +31,12 @@ type PostResult struct {
 	// Posted is true if a comment was actually created or updated.
 	Posted bool
 
+	// Body is the exact body currently stored by the provider.
+	Body string
+
+	// URL identifies the comment currently stored by the provider.
+	URL string
+
 	// SkipReason explains why the comment was not posted, if applicable.
 	SkipReason string
 }
