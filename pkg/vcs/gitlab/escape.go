@@ -38,6 +38,19 @@ var htmlTag = regexp.MustCompile(`^(?:` +
 // snippets. Code is left alone: GitLab does not link references in code, and
 // the escape would show there as literal text. HTML tags and link destinations
 // are left alone too, as the escape would break their URLs.
+//
+// It reads Markdown a line at a time and follows only as much of CommonMark as
+// the comment needs. Where it misreads, a cost keeps its snippet link or the
+// escape shows as text. Known misreads, all from Markdown written into policy,
+// guardrail, budget or error messages:
+//   - code indented four spaces is escaped, and a ``` indented four or more
+//     is taken as a fence;
+//   - a ``` line inside a raw HTML block, such as an error in <pre>, is taken
+//     as a fence;
+//   - fences are not tracked through lists nested in quotes, or through list
+//     items continued after a blank line;
+//   - backticks on a raw HTML line are taken as a code span;
+//   - a bare URL holding "$5" is escaped, which breaks its autolink.
 func escapeSnippetRefs(body string) string {
 	var b strings.Builder
 
