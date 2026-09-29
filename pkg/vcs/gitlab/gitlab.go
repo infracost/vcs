@@ -29,9 +29,9 @@ import (
 const defaultServerURL = "https://gitlab.com"
 
 // maxCommentSize is the GitLab merge-request note body limit, in bytes
-// (GitLab caps notes at ~1 MB). comment.Render reserves headroom inside this
-// limit for the markdown tag and truncation imprecision; do not subtract from
-// it here.
+// (GitLab caps notes at ~1 MB). comment.RenderWith reserves headroom inside
+// this limit for the markdown tag and truncation imprecision; do not subtract
+// from it here.
 const maxCommentSize = 1000000
 
 // Options configures a GitLab VCS provider.
@@ -101,7 +101,7 @@ func New(ctx context.Context, project, token string, mrNumber int, opts Options)
 // GenerateComment renders a merge-request comment from the given data.
 func (g *GitLab) GenerateComment(data comment.Data) (string, error) {
 	size, unit := g.MaxCommentSize()
-	return comment.Render(g.tmpl, size, unit, g.SourceLink, data)
+	return comment.RenderWith(g.tmpl, size, unit, g.SourceLink, escapeSnippetRefs, data)
 }
 
 // MaxCommentSize returns the GitLab note body size limit. GitLab measures the
