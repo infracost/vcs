@@ -6,6 +6,8 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/infracost/vcs/pkg/vcs"
@@ -146,6 +148,15 @@ func writeThreads(t *testing.T, w http.ResponseWriter, commentURL string, existi
 	writeJSON(t, w, http.StatusOK, map[string]any{"value": threads})
 }
 
+// writeComment answers a create with the comment Azure would have stored.
+func writeComment(t *testing.T, w http.ResponseWriter, commentURL string) {
+	t.Helper()
+	writeJSON(t, w, http.StatusOK, map[string]any{"comments": []map[string]any{{
+		"id":     1,
+		"_links": map[string]any{"self": map[string]string{"href": commentURL}},
+	}}})
+}
+
 func writeJSON(t *testing.T, w http.ResponseWriter, status int, body any) {
 	t.Helper()
 	w.Header().Set("Content-Type", "application/json")
@@ -274,9 +285,9 @@ func TestPostErrorCarriesOp(t *testing.T) {
 // Following Azure's sign-in redirect loses the status it sent, and puts a
 // credential-bearing request on a host the caller never named.
 func TestPostCommentDoesNotFollowSignInRedirect(t *testing.T) {
-	var signedIn bool
+	var signedIn atomic.Bool
 	signIn := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		signedIn = true
+		signedIn.Store(true)
 		w.WriteHeader(http.StatusNonAuthoritativeInfo)
 	}))
 	defer signIn.Close()
@@ -290,8 +301,11 @@ func TestPostCommentDoesNotFollowSignInRedirect(t *testing.T) {
 	if err == nil {
 		t.Fatal("PostComment() = nil error, want the 302 surfaced")
 	}
-	if signedIn {
+	if signedIn.Load() {
 		t.Error("PostComment() followed the redirect to the sign-in host")
+	}
+	if !strings.Contains(err.Error(), "credential not accepted") {
+		t.Errorf("error = %v, want it to name the credential failure", err)
 	}
 
 	postErr := postError(t, err)
@@ -300,5 +314,93 @@ func TestPostCommentDoesNotFollowSignInRedirect(t *testing.T) {
 	}
 	if postErr.Op != vcs.OpList {
 		t.Errorf("Op = %q, want %q", postErr.Op, vcs.OpList)
+	}
+}
+
+// 204 is the usual answer to a delete, and plausible for an update. Rejecting
+// it fails mid delete-and-new, after comments are gone and before the new one.
+func TestPostCommentAcceptsNoContent(t *testing.T) {
+	tests := []struct {
+		name      string
+		behavior  vcs.Behavior
+		noContent string
+	}{
+		{name: "delete", behavior: vcs.BehaviorDeleteAndNew, noContent: http.MethodDelete},
+		{name: "update", behavior: vcs.BehaviorUpdate, noContent: http.MethodPatch},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var commentURL string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.Method {
+				case tt.noContent:
+					w.WriteHeader(http.StatusNoContent)
+				case http.MethodGet:
+					writeThreads(t, w, commentURL, true)
+				case http.MethodPost:
+					writeComment(t, w, commentURL)
+				default:
+					t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+				}
+			}))
+			defer srv.Close()
+			commentURL = srv.URL + "/comment/1"
+
+			res, err := azureAt(t, srv.URL).PostComment(context.Background(), "new", tt.behavior)
+			if err != nil {
+				t.Fatalf("PostComment() error = %v, want 204 accepted", err)
+			}
+			if !res.Posted {
+				t.Error("PostComment() Posted = false, want true")
+			}
+		})
+	}
+}
+
+// A same-host 3xx is an org rename, a proxy or an old visualstudio.com URL, not
+// a sign-in bounce, so it still has to be followed.
+func TestPostCommentFollowsSameHostRedirect(t *testing.T) {
+	var commentURL string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && !strings.HasPrefix(r.URL.Path, "/moved"):
+			http.Redirect(w, r, "/moved"+r.URL.Path+"?"+r.URL.RawQuery, http.StatusFound)
+		case r.Method == http.MethodGet:
+			writeThreads(t, w, commentURL, false)
+		case r.Method == http.MethodPost:
+			writeComment(t, w, commentURL)
+		default:
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+	commentURL = srv.URL + "/comment/1"
+
+	res, err := azureAt(t, srv.URL).PostComment(context.Background(), "new", vcs.BehaviorUpdate)
+	if err != nil {
+		t.Fatalf("PostComment() error = %v, want the same-host redirect followed", err)
+	}
+	if !res.Posted {
+		t.Error("PostComment() Posted = false, want true")
+	}
+}
+
+// The sign-in page is a whole HTML document. Quoting it puts it in the logs and
+// on the dashboard.
+func TestPostErrorOmitsNonJSONBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusNonAuthoritativeInfo)
+		_, _ = w.Write([]byte("<html><body>sign in to Azure DevOps</body></html>"))
+	}))
+	defer srv.Close()
+
+	_, err := azureAt(t, srv.URL).PostComment(context.Background(), "new", vcs.BehaviorUpdate)
+	if err == nil {
+		t.Fatal("PostComment() = nil error, want the 203 surfaced")
+	}
+	if strings.Contains(err.Error(), "<html>") {
+		t.Errorf("error = %v, want the HTML sign-in page left out", err)
 	}
 }
