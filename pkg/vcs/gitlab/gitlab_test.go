@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/infracost/go-proto/pkg/rat"
 	"github.com/infracost/vcs/pkg/vcs"
 	"github.com/infracost/vcs/pkg/vcs/comment"
 )
@@ -142,6 +143,52 @@ func TestGraphQLMutationTypeNames(t *testing.T) {
 				t.Errorf("mutation body uses lowercase input type %q (GitLab will reject)\ngot: %s", tt.badType, body)
 			}
 		})
+	}
+}
+
+// The costs in the comment's tables would link to snippets on GitLab, while the
+// estimate details are a code block where the span would show as text.
+func TestGenerateCommentEscapesSnippetRefs(t *testing.T) {
+	g, err := New(context.Background(), "group/project", "token", 1, Options{})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	body, err := g.GenerateComment(comment.Data{
+		Currency:             "USD",
+		TotalMonthlyCost:     rat.New(413),
+		PastTotalMonthlyCost: rat.New(111),
+		Projects: []comment.ProjectResult{{
+			Name:                 "my-project",
+			TotalMonthlyCost:     rat.New(413),
+			PastTotalMonthlyCost: rat.New(111),
+			DiffBreakdown: &comment.CostBreakdown{
+				TotalMonthlyCost: rat.New(302),
+				Resources:        []comment.BreakdownResource{{Name: "aws_instance.web", MonthlyCost: rat.New(302)}},
+			},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("GenerateComment() error = %v", err)
+	}
+
+	for _, want := range []string{`<td align="right">+&#36;<span></span>302`, `<td align="right">&#36;<span></span>413</td>`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("GenerateComment() missing %q:\n%s", want, body)
+		}
+	}
+
+	start := strings.Index(body, "```")
+	end := strings.LastIndex(body, "```")
+	if start < 0 || end <= start {
+		t.Fatalf("GenerateComment() has no estimate details block:\n%s", body)
+	}
+	details := body[start:end]
+	if !strings.Contains(details, "$302") {
+		t.Errorf("estimate details lost their cost:\n%s", details)
+	}
+	if strings.Contains(details, "<span>") {
+		t.Errorf("estimate details carry a span that GitLab would show as text:\n%s", details)
 	}
 }
 
