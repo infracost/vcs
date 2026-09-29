@@ -47,7 +47,8 @@ type Options struct {
 	Tag string
 
 	// Template overrides the default comment template. If nil, the
-	// default template is used.
+	// default template is used. Size trimming expects it to print .CostDetails
+	// inside a fenced code block, as the default does.
 	Template *template.Template
 }
 
