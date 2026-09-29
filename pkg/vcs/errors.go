@@ -34,9 +34,22 @@ type PostError struct {
 	// Derived values are capped at maxRetryAfter; it is 0 with no usable hint.
 	RetryAfter time.Duration
 
+	// Op is the request that failed: OpList, OpCreate, OpUpdate or OpDelete.
+	// Empty when the provider does not set it.
+	Op string
+
 	// Err is the underlying error.
 	Err error
 }
+
+// The requests PostComment makes, as reported by PostError.Op. They are worth
+// telling apart because reading comments and writing one need different grants.
+const (
+	OpList   = "list"
+	OpCreate = "create"
+	OpUpdate = "update"
+	OpDelete = "delete"
+)
 
 func (e *PostError) Error() string {
 	if e == nil || e.Err == nil {

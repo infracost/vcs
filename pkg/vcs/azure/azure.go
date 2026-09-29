@@ -12,6 +12,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -29,6 +30,10 @@ import (
 // comment.Render reserves headroom inside this limit for the markdown
 // tag and truncation imprecision; do not subtract from it here.
 const maxCommentSize = 150000
+
+// maxErrBodySize caps how much of an error response is quoted. A refused
+// credential answers with a whole sign-in HTML page, which ends up in logs.
+const maxErrBodySize = 1024
 
 // patLength is the standard length of an Azure DevOps Personal Access Token.
 // Tokens of this length are sent via HTTP Basic; OAuth bearer tokens otherwise.
@@ -235,12 +240,12 @@ func (a *Azure) findMatchingComments(ctx context.Context) ([]azureComment, error
 
 	res, err := a.httpClient.Do(req)
 	if err != nil {
-		return nil, vcs.RetryablePostError(fmt.Errorf("getting comments: %w", err))
+		return nil, withOp(vcs.OpList, vcs.RetryablePostError(fmt.Errorf("getting comments: %w", err)))
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, vcs.HTTPPostError(res.StatusCode, res.Header, fmt.Errorf("getting comments: %s", res.Status))
+		return nil, responseError(vcs.OpList, "getting comments", res)
 	}
 
 	resBody, err := io.ReadAll(res.Body)
@@ -317,13 +322,14 @@ func (a *Azure) callCreateComment(ctx context.Context, body string) (azureCommen
 
 	res, err := a.httpClient.Do(req)
 	if err != nil {
-		return azureComment{}, vcs.RetryablePostError(fmt.Errorf("creating comment: %w", err))
+		return azureComment{}, withOp(vcs.OpCreate, vcs.RetryablePostError(fmt.Errorf("creating comment: %w", err)))
 	}
 	defer func() { _ = res.Body.Close() }()
 
-	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		resBody, _ := io.ReadAll(res.Body)
-		return azureComment{}, vcs.HTTPPostError(res.StatusCode, res.Header, fmt.Errorf("creating comment: %s\n%s", res.Status, string(resBody)))
+	// Azure documents 200 on success; any other 2xx is the sign-in page, which
+	// would otherwise be read as a write that happened.
+	if res.StatusCode != http.StatusOK {
+		return azureComment{}, responseError(vcs.OpCreate, "creating comment", res)
 	}
 
 	resBody, err := io.ReadAll(res.Body)
@@ -370,12 +376,15 @@ func (a *Azure) callUpdateComment(ctx context.Context, c azureComment, body stri
 
 	res, err := a.httpClient.Do(req)
 	if err != nil {
-		return vcs.RetryablePostError(fmt.Errorf("updating comment: %w", err))
+		return withOp(vcs.OpUpdate, vcs.RetryablePostError(fmt.Errorf("updating comment: %w", err)))
 	}
 	defer func() { _ = res.Body.Close() }()
 
-	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return vcs.HTTPPostError(res.StatusCode, res.Header, fmt.Errorf("updating comment: %s", res.Status))
+	// Azure documents 200; 204 is accepted because a write with no body is a
+	// plausible answer. Any other 2xx is the sign-in page, and accepting it
+	// reported a comment that was never written.
+	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusNoContent {
+		return responseError(vcs.OpUpdate, "updating comment", res)
 	}
 	return nil
 }
@@ -390,14 +399,46 @@ func (a *Azure) callDeleteComment(ctx context.Context, c azureComment) error {
 
 	res, err := a.httpClient.Do(req)
 	if err != nil {
-		return vcs.RetryablePostError(fmt.Errorf("deleting comment: %w", err))
+		return withOp(vcs.OpDelete, vcs.RetryablePostError(fmt.Errorf("deleting comment: %w", err)))
 	}
 	defer func() { _ = res.Body.Close() }()
 
-	if res.StatusCode >= 300 {
-		return vcs.HTTPPostError(res.StatusCode, res.Header, fmt.Errorf("deleting comment: %s", res.Status))
+	// Azure documents 200, but 204 is the usual answer to a delete. Any other
+	// 2xx is the sign-in page.
+	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusNoContent {
+		return responseError(vcs.OpDelete, "deleting comment", res)
 	}
 	return nil
+}
+
+// responseError builds the error for an unexpected response status. A 3xx is
+// Azure refusing the credential rather than an API error, so it is named as
+// such; otherwise Azure's own JSON message is quoted, capped.
+func responseError(op, action string, res *http.Response) error {
+	msg := res.Status
+	switch {
+	case res.StatusCode >= 300 && res.StatusCode < 400:
+		host := "a sign-in host"
+		if loc, err := res.Location(); err == nil {
+			host = loc.Host
+		}
+		msg = fmt.Sprintf("%s: credential not accepted, redirected to %s", res.Status, host)
+	case strings.Contains(res.Header.Get("Content-Type"), "application/json"):
+		if body, err := io.ReadAll(io.LimitReader(res.Body, maxErrBodySize)); err == nil && len(body) > 0 {
+			msg = fmt.Sprintf("%s\n%s", res.Status, body)
+		}
+	}
+	return withOp(op, vcs.HTTPPostError(res.StatusCode, res.Header, fmt.Errorf("%s: %s", action, msg)))
+}
+
+// withOp tags a *vcs.PostError with the request that produced it, so a caller
+// can tell a failed lookup from a failed write without matching on error text.
+func withOp(op string, err error) error {
+	var postErr *vcs.PostError
+	if errors.As(err, &postErr) {
+		postErr.Op = op
+	}
+	return err
 }
 
 // buildAPIURL converts a repo's web URL to the corresponding API base URL.
@@ -445,5 +486,21 @@ func newClient(ctx context.Context, token string, tlsConfig *tls.Config) (*http.
 	rawClient := &http.Client{Transport: transport}
 	httpCtx := context.WithValue(ctx, oauth2.HTTPClient, rawClient)
 
-	return oauth2.NewClient(httpCtx, ts), nil
+	client := oauth2.NewClient(httpCtx, ts)
+	// Azure answers a credential it cannot use with a 302 to a sign-in host that
+	// serves HTML as 203. Stopping on a host change keeps the status Azure
+	// actually sent, and keeps a credential-bearing request on the host the
+	// caller named: the oauth2 transport re-adds Authorization on every hop, so
+	// Go's own cross-host header stripping never applies. Same-host redirects
+	// still follow, so renames and proxies keep working.
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if req.URL.Host != via[0].URL.Host {
+			return http.ErrUseLastResponse
+		}
+		if len(via) >= 10 {
+			return errors.New("stopped after 10 redirects")
+		}
+		return nil
+	}
+	return client, nil
 }
