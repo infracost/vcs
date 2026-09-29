@@ -1331,6 +1331,57 @@ func TestRenderCapsOversizeBody(t *testing.T) {
 	})
 }
 
+// A provider's rewrite can grow the body, so the growth has to be counted
+// before the body is measured: taken out of the cost details budget, or capped
+// when there are none.
+func TestRenderWithCountsRewriteGrowth(t *testing.T) {
+	data := Data{Currency: "USD", TotalMonthlyCost: rat.New(1000), PastTotalMonthlyCost: rat.New(500)}
+	var resources []BreakdownResource
+	for i := 0; i < 2000; i++ {
+		resources = append(resources, BreakdownResource{Name: fmt.Sprintf("aws_instance.web_%d", i), MonthlyCost: rat.New(1)})
+	}
+	data.Projects = []ProjectResult{{
+		Name:                 "my-project",
+		TotalMonthlyCost:     rat.New(1000),
+		PastTotalMonthlyCost: rat.New(500),
+		DiffBreakdown:        &CostBreakdown{TotalMonthlyCost: rat.New(500), Resources: resources},
+	}}
+
+	const maxSize = 32768
+	t.Run("default", func(t *testing.T) {
+		padding := strings.Repeat("x", 5000)
+		rewrite := func(s string) string { return s + padding }
+
+		got, err := RenderWith(DefaultTemplate, maxSize, SizeUnitBytes, githubSourceLink, rewrite, data)
+		if err != nil {
+			t.Fatalf("RenderWith() error: %v", err)
+		}
+		if !strings.HasSuffix(got, padding) {
+			t.Error("RenderWith() did not apply rewrite to the final body")
+		}
+		if n := len(got); n > maxSize {
+			t.Errorf("RenderWith() = %d bytes, over the %d limit", n, maxSize)
+		}
+	})
+
+	// The flat template has no cost details to shrink, so the rewritten body
+	// itself has to be capped.
+	t.Run("flat", func(t *testing.T) {
+		rewrite := func(s string) string { return s + strings.Repeat("x", maxSize) }
+
+		got, err := RenderWith(FlatTemplate, maxSize, SizeUnitBytes, githubSourceLink, rewrite, data)
+		if err != nil {
+			t.Fatalf("RenderWith() error: %v", err)
+		}
+		if n := len(got); n > maxSize {
+			t.Errorf("RenderWith() = %d bytes, over the %d limit", n, maxSize)
+		}
+		if !strings.Contains(got, "...") {
+			t.Error("RenderWith() was not truncated")
+		}
+	})
+}
+
 // A pipe in a project name would split the row of a Markdown table.
 func TestRenderFlatEscapesPipesInTableCells(t *testing.T) {
 	data := Data{

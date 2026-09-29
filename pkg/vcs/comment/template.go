@@ -99,6 +99,11 @@ const truncationBuffer = 1000
 // Azure DevOps ?path=&version=GC&line=).
 type SourceLinker func(repoURL, commitSHA, path string, startLine int) string
 
+// BodyRewriter rewrites a rendered comment body for a VCS provider whose
+// Markdown would otherwise misread it (e.g. GitLab linking "$123" to a
+// snippet).
+type BodyRewriter func(body string) string
+
 // Render executes the given template against the provided data and
 // returns the rendered string, truncating cost details if necessary
 // to fit within maxCommentSize.
@@ -106,6 +111,15 @@ type SourceLinker func(repoURL, commitSHA, path string, startLine int) string
 // srcLink is the VCS provider's source-link generator; it may be nil, in
 // which case file/line links are omitted from the rendered output.
 func Render(tmpl *template.Template, maxCommentSize int, unit SizeUnit, srcLink SourceLinker, data Data) (string, error) {
+	return RenderWith(tmpl, maxCommentSize, unit, srcLink, nil, data)
+}
+
+// RenderWith is Render with a provider-specific rewrite of the rendered body.
+// rewrite runs on every render before the body is measured, so growth it adds
+// is counted against maxCommentSize. The cost details are measured before the
+// rewrite, so it must not grow them: the bundled templates print them in a code
+// block for it to skip. A nil rewrite leaves the body as-is.
+func RenderWith(tmpl *template.Template, maxCommentSize int, unit SizeUnit, srcLink SourceLinker, rewrite BodyRewriter, data Data) (string, error) {
 	inputs := new(Inputs)
 	data.processProjectErrors(inputs)
 
@@ -126,7 +140,7 @@ func Render(tmpl *template.Template, maxCommentSize int, unit SizeUnit, srcLink 
 		data.processPreexistingIssues(inputs, finopsIndex, securityIndex, taggingIndex)
 	}
 
-	return renderWithTruncation(tmpl, inputs, maxCommentSize, unit, hasDetails)
+	return renderWithTruncation(tmpl, inputs, maxCommentSize, unit, hasDetails, rewrite)
 }
 
 // emitsCostDetails reports whether tmpl prints .CostDetails. Only printed
@@ -177,17 +191,17 @@ func branchEmitsCostDetails(b *parse.BranchNode) bool {
 // output exceeds maxSize. When the template has no CostDetails to shrink the
 // whole body is capped instead: the provider's API rejects an oversize comment
 // outright. That cap is not applied to templates that do, because the cut point
-// is arbitrary and would land inside their HTML.
+// is arbitrary and would land inside their HTML. rewrite runs on every pass
+// before the body is measured; nil leaves the body unchanged.
 // See: dashboard/api/src/services/templates/helpers.ts renderTemplateAndTruncateIfNecessary
-func renderWithTruncation(tmpl *template.Template, inputs *Inputs, maxSize int, unit SizeUnit, hasDetails bool) (string, error) {
+func renderWithTruncation(tmpl *template.Template, inputs *Inputs, maxSize int, unit SizeUnit, hasDetails bool, rewrite BodyRewriter) (string, error) {
 	maxLen := maxSize - truncationBuffer
 
 	if !hasDetails {
-		var buf bytes.Buffer
-		if err := tmpl.Execute(&buf, inputs); err != nil {
+		out, err := executeTemplate(tmpl, inputs, rewrite)
+		if err != nil {
 			return "", err
 		}
-		out := buf.String()
 		if measureLen(out, unit) > maxLen {
 			out = truncateMiddleStr(out, maxLen, unit)
 		}
@@ -198,12 +212,12 @@ func renderWithTruncation(tmpl *template.Template, inputs *Inputs, maxSize int, 
 	fullCostDetails := inputs.CostDetails
 	inputs.CostDetails = ""
 
-	var baseBuf bytes.Buffer
-	if err := tmpl.Execute(&baseBuf, inputs); err != nil {
+	base, err := executeTemplate(tmpl, inputs, rewrite)
+	if err != nil {
 		return "", err
 	}
 
-	maxAvailable := maxLen - measureLen(baseBuf.String(), unit)
+	maxAvailable := maxLen - measureLen(base, unit)
 	if maxAvailable < 0 {
 		maxAvailable = 0
 	}
@@ -214,12 +228,20 @@ func renderWithTruncation(tmpl *template.Template, inputs *Inputs, maxSize int, 
 		inputs.CostDetails = truncateMiddleStr(fullCostDetails, maxAvailable, unit)
 	}
 
+	return executeTemplate(tmpl, inputs, rewrite)
+}
+
+// executeTemplate renders tmpl against inputs and applies rewrite, if any, to
+// the result.
+func executeTemplate(tmpl *template.Template, inputs *Inputs, rewrite BodyRewriter) (string, error) {
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, inputs); err != nil {
 		return "", err
 	}
-
-	return buf.String(), nil
+	if rewrite == nil {
+		return buf.String(), nil
+	}
+	return rewrite(buf.String()), nil
 }
 
 // truncateMiddleStr keeps the start and end of s, replacing the middle with
