@@ -65,6 +65,11 @@ type Data struct {
 	// RunID is the ID of the run in the infracost dashboard, if available
 	RunID string
 
+	// PullRequestID is the ID of the pull request in the infracost dashboard, if
+	// available. Used to link blocking guardrails to the PR page, which is where
+	// they can be unblocked.
+	PullRequestID string
+
 	// Whether the cloud is enabled for the upload of results
 	CloudEnabled bool
 

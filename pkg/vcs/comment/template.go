@@ -486,6 +486,20 @@ func (data *Data) runURL() string {
 	)
 }
 
+// pullRequestURL returns the Infracost Cloud link to this PR's dashboard page,
+// tagged with utmContent, or an empty string when cloud is disabled, any
+// required identifier is missing, or dashboard links are hidden. Callers should
+// not render a dashboard link when this returns "".
+func (data *Data) pullRequestURL(utmContent string) string {
+	if !data.CloudEnabled || data.OrgSlug == "" || data.RepoID == "" || data.PullRequestID == "" || data.HideDashboardLinks {
+		return ""
+	}
+	return fmt.Sprintf(
+		"https://dashboard.infracost.io/org/%s/repos/%s/pulls/%s?utm_source=pr_comment&utm_content=%s",
+		data.OrgSlug, data.RepoID, data.PullRequestID, utmContent,
+	)
+}
+
 type Inputs struct {
 	// ProjectErrorCount is a pre-formatted sentence like "1 project has errors"
 	// or "3 projects have errors (showing first 3)".
