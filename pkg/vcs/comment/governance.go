@@ -260,17 +260,15 @@ func (data *Data) processGuardrailResults(inputs *Inputs) {
 			title = result.GuardrailID
 		}
 
-		message := formatGuardrailMessage(result, data.Currency)
-		// Blocking guardrails can only be unblocked from the PR page, so link
-		// there. The author can also send this link to whoever approves.
-		if unblockURL := data.pullRequestURL("unblock_guardrail"); result.BlockPR && unblockURL != "" {
-			message = strings.TrimSpace(fmt.Sprintf("%s [Unblock in Infracost](%s).", message, unblockURL))
-		}
-
 		entry := GovernanceEntry{
 			Title:    title,
 			Blocking: result.BlockPR,
-			Message:  message,
+			Message:  formatGuardrailMessage(result, data.Currency),
+		}
+		// In the dashboard, blocking guardrails are unblocked from the PR page,
+		// so link there. The author can also send this link to whoever approves.
+		if result.BlockPR {
+			entry.UnblockURL = data.pullRequestURL("unblock_guardrail")
 		}
 
 		table.Entries = append(table.Entries, entry)

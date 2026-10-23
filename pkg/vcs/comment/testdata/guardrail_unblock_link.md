@@ -7,7 +7,9 @@
 </td></tr>
 <tr><td></td><td>
 
-At least one project exceeded per-project threshold. Cost increased by $400, threshold was $100. [Unblock in Infracost](https://dashboard.infracost.io/org/my-org/repos/repo-123/pulls/pr-789?utm_source=pr_comment&utm_content=unblock_guardrail).
+At least one project exceeded per-project threshold. Cost increased by $400, threshold was $100.
+
+[Unblock in Infracost](https://dashboard.infracost.io/org/my-org/pulls/pr-789?utm_source=pr_comment&utm_content=unblock_guardrail)
 </td></tr>
 
 <tr><td colspan="2" title="Failure">

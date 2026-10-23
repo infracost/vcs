@@ -1526,7 +1526,12 @@ func TestPullRequestURL(t *testing.T) {
 		{
 			name: "cloud enabled with all identifiers",
 			data: Data{CloudEnabled: true, OrgSlug: "my-org", RepoID: "repo-123", PullRequestID: "pr-789"},
-			want: "https://dashboard.infracost.io/org/my-org/repos/repo-123/pulls/pr-789?utm_source=pr_comment&utm_content=unblock_guardrail",
+			want: "https://dashboard.infracost.io/org/my-org/pulls/pr-789?utm_source=pr_comment&utm_content=unblock_guardrail",
+		},
+		{
+			name: "repo id is not needed",
+			data: Data{CloudEnabled: true, OrgSlug: "my-org", PullRequestID: "pr-789"},
+			want: "https://dashboard.infracost.io/org/my-org/pulls/pr-789?utm_source=pr_comment&utm_content=unblock_guardrail",
 		},
 		{
 			name: "cloud disabled returns empty",
@@ -1541,11 +1546,6 @@ func TestPullRequestURL(t *testing.T) {
 		{
 			name: "missing org slug returns empty",
 			data: Data{CloudEnabled: true, RepoID: "repo-123", PullRequestID: "pr-789"},
-			want: "",
-		},
-		{
-			name: "missing repo id returns empty",
-			data: Data{CloudEnabled: true, OrgSlug: "my-org", PullRequestID: "pr-789"},
 			want: "",
 		},
 		{
@@ -1678,5 +1678,35 @@ func TestRenderFlatEscapesPolicyTitle(t *testing.T) {
 	}
 	if !strings.Contains(got, `\*\*bad\*\* \# heading`) {
 		t.Errorf("Render() did not escape the policy title:\n%s", got)
+	}
+}
+
+// Every template renders the unblock link once, for the blocking guardrail
+// only, on its own line after the guardrail message.
+func TestRenderGuardrailUnblockLink(t *testing.T) {
+	var data Data
+	for _, tt := range renderCases() {
+		if tt.name == "guardrail_unblock_link" {
+			data = tt.data
+		}
+	}
+
+	link := "[Unblock in Infracost](https://dashboard.infracost.io/org/my-org/pulls/pr-789?utm_source=pr_comment&utm_content=unblock_guardrail)"
+	for _, tmpl := range []struct {
+		name string
+		tmpl *template.Template
+	}{{"default", DefaultTemplate}, {"flat", FlatTemplate}, {"flatDetails", FlatDetailsTemplate}} {
+		t.Run(tmpl.name, func(t *testing.T) {
+			got, err := Render(tmpl.tmpl, 65000, SizeUnitRunes, githubSourceLink, data)
+			if err != nil {
+				t.Fatalf("Render() error: %v", err)
+			}
+			if n := strings.Count(got, link); n != 1 {
+				t.Errorf("want the unblock link once, got %d:\n%s", n, got)
+			}
+			if !strings.Contains(got, "threshold was $100.\n\n"+link) {
+				t.Errorf("want the unblock link on its own line after the blocking guardrail's message:\n%s", got)
+			}
+		})
 	}
 }
