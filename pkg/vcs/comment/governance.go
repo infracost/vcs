@@ -265,8 +265,8 @@ func (data *Data) processGuardrailResults(inputs *Inputs) {
 			Blocking: result.BlockPR,
 			Message:  formatGuardrailMessage(result, data.Currency),
 		}
-		// In the dashboard, blocking guardrails are unblocked from the PR page,
-		// so link there. The author can also send this link to whoever approves.
+		// Blocking guardrails can only be unblocked from the PR page, so link
+		// there. The author can also send this link to whoever approves.
 		if result.BlockPR {
 			entry.UnblockURL = data.pullRequestURL("unblock_guardrail")
 		}
