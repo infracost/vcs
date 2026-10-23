@@ -9,6 +9,10 @@
 
 {{ .Message }}
 {{- end }}
+{{- if .UnblockURL }}
+
+[Unblock in Infracost]({{ .UnblockURL }})
+{{- end }}
 {{- range .Resources }}
 
 {{ if .Location }}{{ .Location }}{{ end }}

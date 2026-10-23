@@ -12,10 +12,16 @@
 </details>
 {{- end }}
 </td></tr>
-{{ if .Message -}}
+{{ if or .Message .UnblockURL -}}
 <tr><td></td><td>
+{{- if .Message }}
 
 {{ .Message }}
+{{- end }}
+{{- if .UnblockURL }}
+
+[Unblock in Infracost]({{ .UnblockURL }})
+{{- end }}
 </td></tr>
 {{ end -}}
 {{ range .Resources -}}

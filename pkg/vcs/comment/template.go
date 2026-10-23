@@ -486,6 +486,20 @@ func (data *Data) runURL() string {
 	)
 }
 
+// pullRequestURL links to the PR's page in Infracost Cloud, the only place a
+// blocking guardrail can be unblocked from the dashboard. It's empty when the
+// comment must not link there: cloud is off, the dashboard sent no PR ID, or
+// the org hides dashboard links.
+func (data *Data) pullRequestURL(utmContent string) string {
+	if !data.CloudEnabled || data.OrgSlug == "" || data.PullRequestID == "" || data.HideDashboardLinks {
+		return ""
+	}
+	return fmt.Sprintf(
+		"https://dashboard.infracost.io/org/%s/pulls/%s?utm_source=pr_comment&utm_content=%s",
+		data.OrgSlug, data.PullRequestID, utmContent,
+	)
+}
+
 type Inputs struct {
 	// ProjectErrorCount is a pre-formatted sentence like "1 project has errors"
 	// or "3 projects have errors (showing first 3)".
@@ -724,6 +738,10 @@ type GovernanceEntry struct {
 
 	// Message is an optional paragraph shown below the title row.
 	Message string
+
+	// UnblockURL is an optional link to where a blocking entry can be
+	// unblocked. Rendered as an "Unblock in Infracost" link below Message.
+	UnblockURL string
 
 	// Resources lists the affected resources with their issues.
 	Resources []GovernanceResource

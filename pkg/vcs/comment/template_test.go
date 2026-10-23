@@ -431,6 +431,73 @@ func renderCases() []renderTestCase {
 			goldenFile: "guardrail_blocks.md",
 		},
 		{
+			name:           "guardrail_unblock_link",
+			maxCommentSize: 65000,
+			data: Data{
+				SupportsBotCommands:  true,
+				Currency:             "USD",
+				CloudEnabled:         true,
+				OrgSlug:              "my-org",
+				RepoID:               "repo-123",
+				RunID:                "run-456",
+				PullRequestID:        "pr-789",
+				TotalMonthlyCost:     rat.New(500),
+				PastTotalMonthlyCost: rat.New(100),
+				GuardrailResults: []event.GuardrailResult{
+					{
+						GuardrailID:            "guardrail-1",
+						GuardrailName:          "Cost increase > $100",
+						Triggered:              true,
+						PRComment:              true,
+						BlockPR:                true,
+						Increase:               rat.New(400),
+						PercentIncrease:        rat.New(400),
+						TriggeringProjectNames: []string{"my-project"},
+						Scope:                  protoevent.Guardrail_PROJECT,
+						IncreaseThreshold:      rat.New(100),
+					},
+					{
+						GuardrailID:            "guardrail-2",
+						GuardrailName:          "Cost increase > $50",
+						Triggered:              true,
+						PRComment:              true,
+						BlockPR:                false,
+						Increase:               rat.New(400),
+						PercentIncrease:        rat.New(400),
+						TriggeringProjectNames: []string{"my-project"},
+						Scope:                  protoevent.Guardrail_PROJECT,
+						IncreaseThreshold:      rat.New(50),
+					},
+				},
+				Projects: []ProjectResult{
+					{
+						Name:                 "my-project",
+						TotalMonthlyCost:     rat.New(500),
+						PastTotalMonthlyCost: rat.New(100),
+						Breakdown: &CostBreakdown{
+							TotalMonthlyCost: rat.New(500),
+							Resources: []BreakdownResource{
+								{Name: "aws_instance.big", MonthlyCost: rat.New(500)},
+							},
+						},
+						PastBreakdown: &CostBreakdown{
+							TotalMonthlyCost: rat.New(100),
+							Resources: []BreakdownResource{
+								{Name: "aws_instance.big", MonthlyCost: rat.New(100)},
+							},
+						},
+						DiffBreakdown: &CostBreakdown{
+							TotalMonthlyCost: rat.New(400),
+							Resources: []BreakdownResource{
+								{Name: "aws_instance.big", MonthlyCost: rat.New(400)},
+							},
+						},
+					},
+				},
+			},
+			goldenFile: "guardrail_unblock_link.md",
+		},
+		{
 			name:           "environmental_metrics",
 			maxCommentSize: 65000,
 			data: Data{
@@ -1450,6 +1517,53 @@ func TestRunURL(t *testing.T) {
 	}
 }
 
+func TestPullRequestURL(t *testing.T) {
+	tests := []struct {
+		name string
+		data Data
+		want string
+	}{
+		{
+			name: "cloud enabled with all identifiers",
+			data: Data{CloudEnabled: true, OrgSlug: "my-org", RepoID: "repo-123", PullRequestID: "pr-789"},
+			want: "https://dashboard.infracost.io/org/my-org/pulls/pr-789?utm_source=pr_comment&utm_content=unblock_guardrail",
+		},
+		{
+			name: "repo id is not needed",
+			data: Data{CloudEnabled: true, OrgSlug: "my-org", PullRequestID: "pr-789"},
+			want: "https://dashboard.infracost.io/org/my-org/pulls/pr-789?utm_source=pr_comment&utm_content=unblock_guardrail",
+		},
+		{
+			name: "cloud disabled returns empty",
+			data: Data{CloudEnabled: false, OrgSlug: "my-org", RepoID: "repo-123", PullRequestID: "pr-789"},
+			want: "",
+		},
+		{
+			name: "missing pull request id returns empty",
+			data: Data{CloudEnabled: true, OrgSlug: "my-org", RepoID: "repo-123", RunID: "run-456"},
+			want: "",
+		},
+		{
+			name: "missing org slug returns empty",
+			data: Data{CloudEnabled: true, RepoID: "repo-123", PullRequestID: "pr-789"},
+			want: "",
+		},
+		{
+			name: "hidden dashboard links returns empty",
+			data: Data{CloudEnabled: true, OrgSlug: "my-org", RepoID: "repo-123", PullRequestID: "pr-789", HideDashboardLinks: true},
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.data.pullRequestURL("unblock_guardrail"); got != tt.want {
+				t.Errorf("pullRequestURL() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestTruncateMiddleStr(t *testing.T) {
 	// "─" (U+2500) is 3 bytes in UTF-8. Use it to prove cuts never split a rune.
 	multibyte := strings.Repeat("─", 20)
@@ -1564,5 +1678,35 @@ func TestRenderFlatEscapesPolicyTitle(t *testing.T) {
 	}
 	if !strings.Contains(got, `\*\*bad\*\* \# heading`) {
 		t.Errorf("Render() did not escape the policy title:\n%s", got)
+	}
+}
+
+// Every template renders the unblock link once, for the blocking guardrail
+// only, on its own line after the guardrail message.
+func TestRenderGuardrailUnblockLink(t *testing.T) {
+	var data Data
+	for _, tt := range renderCases() {
+		if tt.name == "guardrail_unblock_link" {
+			data = tt.data
+		}
+	}
+
+	link := "[Unblock in Infracost](https://dashboard.infracost.io/org/my-org/pulls/pr-789?utm_source=pr_comment&utm_content=unblock_guardrail)"
+	for _, tmpl := range []struct {
+		name string
+		tmpl *template.Template
+	}{{"default", DefaultTemplate}, {"flat", FlatTemplate}, {"flatDetails", FlatDetailsTemplate}} {
+		t.Run(tmpl.name, func(t *testing.T) {
+			got, err := Render(tmpl.tmpl, 65000, SizeUnitRunes, githubSourceLink, data)
+			if err != nil {
+				t.Fatalf("Render() error: %v", err)
+			}
+			if n := strings.Count(got, link); n != 1 {
+				t.Errorf("want the unblock link once, got %d:\n%s", n, got)
+			}
+			if !strings.Contains(got, "threshold was $100.\n\n"+link) {
+				t.Errorf("want the unblock link on its own line after the blocking guardrail's message:\n%s", got)
+			}
+		})
 	}
 }
