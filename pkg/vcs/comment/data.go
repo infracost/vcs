@@ -14,6 +14,10 @@ import (
 type Data struct {
 	EnableEnvironmentalMetrics bool
 
+	// RunQuotaMessage is the pricing API's run-limit message. When set it
+	// replaces the whole report: the run produced no costs to show.
+	RunQuotaMessage string
+
 	// NeverShowCostEstimate suppresses the cost details section entirely.
 	NeverShowCostEstimate bool
 

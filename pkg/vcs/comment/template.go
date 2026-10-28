@@ -120,6 +120,12 @@ func Render(tmpl *template.Template, maxCommentSize int, unit SizeUnit, srcLink 
 // rewrite, so it must not grow them: the bundled templates print them in a code
 // block for it to skip. A nil rewrite leaves the body as-is.
 func RenderWith(tmpl *template.Template, maxCommentSize int, unit SizeUnit, srcLink SourceLinker, rewrite BodyRewriter, data Data) (string, error) {
+	// A run-quota failure replaces the whole report, as v0.1 did: there are no
+	// costs to show and the message is the only thing worth saying.
+	if data.RunQuotaMessage != "" {
+		return data.RunQuotaMessage, nil
+	}
+
 	inputs := new(Inputs)
 	data.processProjectErrors(inputs)
 
