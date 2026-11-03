@@ -111,6 +111,21 @@ result, err := gh.PostComment(ctx, body, vcs.BehaviorUpdate)
 
 `PostResult.Posted` indicates whether a comment was created or updated. If it was skipped (e.g. duplicate or stale), `PostResult.SkipReason` explains why.
 
+### 4. Post inline annotations (optional)
+
+```go
+annotations := comment.BuildAnnotations(data) // new policy failures with a file + line
+// Drop any whose line is not in the PR diff, then:
+result, err := gh.PostAnnotations(ctx, annotations)
+```
+
+- GitHub: PR review comments on `github.Options.HeadSHA`. Threads whose failure is gone are resolved.
+- GitLab: diff discussions. Threads whose failure is gone are resolved.
+- Azure DevOps: file threads. Threads whose failure is gone are set to "fixed".
+- Bitbucket: not supported; returns a `SkipReason`.
+
+Pass an empty list to resolve all earlier annotations.
+
 ## Comment behaviors
 
 `PostComment` accepts a `vcs.Behavior` that controls how comments are managed:
