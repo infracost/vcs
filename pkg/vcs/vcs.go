@@ -64,8 +64,9 @@ type VCS interface {
 	// input is missing.
 	SourceLink(repoURL, commitSHA, path string, startLine int) string
 
-	// PostAnnotations pins each annotation to its line in the PR diff, and
-	// marks earlier annotations whose key is not in the list as fixed. Every
-	// annotation must point at a line in the diff.
-	PostAnnotations(ctx context.Context, annotations []comment.Annotation) (AnnotationResult, error)
+	// PostAnnotations pins each annotation to its line in the PR diff. Every
+	// annotation must point at a line in the diff. failingKeys holds the key
+	// of every failure still present, posted or not: earlier threads whose key
+	// is in neither are marked fixed, and the rest are left as they are.
+	PostAnnotations(ctx context.Context, annotations []comment.Annotation, failingKeys []string) (AnnotationResult, error)
 }

@@ -413,6 +413,6 @@ func jsonRequest(ctx context.Context, method, url string, payload any) (*http.Re
 }
 
 // PostAnnotations is not supported on Bitbucket yet.
-func (b *Bitbucket) PostAnnotations(_ context.Context, _ []comment.Annotation) (vcs.AnnotationResult, error) {
+func (b *Bitbucket) PostAnnotations(_ context.Context, _ []comment.Annotation, _ []string) (vcs.AnnotationResult, error) {
 	return vcs.AnnotationResult{SkipReason: "annotations are not supported on Bitbucket"}, nil
 }

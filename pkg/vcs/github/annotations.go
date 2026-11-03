@@ -24,10 +24,10 @@ type annotationThread struct {
 }
 
 // PostAnnotations posts one review comment per annotation. A key that already
-// has a current thread is not posted again. Threads whose key is gone are
+// has a current thread is not posted again. Threads whose failure is gone are
 // resolved. Outdated threads, whose line has since changed, are resolved and
 // posted again on the new line.
-func (g *GitHub) PostAnnotations(ctx context.Context, annotations []comment.Annotation) (vcs.AnnotationResult, error) {
+func (g *GitHub) PostAnnotations(ctx context.Context, annotations []comment.Annotation, failingKeys []string) (vcs.AnnotationResult, error) {
 	if g.headSHA == "" {
 		return vcs.AnnotationResult{SkipReason: "no head commit to comment on"}, nil
 	}
@@ -46,10 +46,11 @@ func (g *GitHub) PostAnnotations(ctx context.Context, annotations []comment.Anno
 
 	var res vcs.AnnotationResult
 	var lastRejection error
-	wanted := map[string]bool{}
+	posting := map[string]bool{}
+	failing := vcs.StillFailing(annotations, failingKeys)
 
 	for _, a := range annotations {
-		wanted[a.Key] = true
+		posting[a.Key] = true
 		if t, ok := existing[a.Key]; ok {
 			if t.resolved {
 				if err := g.callResolveThread(ctx, t.id, false); err != nil {
@@ -76,13 +77,14 @@ func (g *GitHub) PostAnnotations(ctx context.Context, annotations []comment.Anno
 		if t.resolved {
 			continue
 		}
-		if wanted[t.key] && !t.outdated {
+		// An outdated thread is replaced only when it was posted again.
+		if failing[t.key] && (!t.outdated || !posting[t.key]) {
 			continue
 		}
 		if err := g.callResolveThread(ctx, t.id, true); err != nil {
 			return res, err
 		}
-		if !wanted[t.key] {
+		if !failing[t.key] {
 			res.Resolved++
 		}
 	}

@@ -3,6 +3,7 @@ package vcs
 import (
 	"errors"
 	"fmt"
+	"github.com/infracost/vcs/pkg/vcs/comment"
 	"net/http"
 	"regexp"
 	"strings"
@@ -75,4 +76,17 @@ func AllRejected(res AnnotationResult, lastRejection error) error {
 		return fmt.Errorf("all %d annotations rejected: %w", res.Rejected, lastRejection)
 	}
 	return nil
+}
+
+// StillFailing returns the keys whose threads must stay open: the annotations
+// being posted plus failingKeys.
+func StillFailing(annotations []comment.Annotation, failingKeys []string) map[string]bool {
+	failing := make(map[string]bool, len(annotations)+len(failingKeys))
+	for _, a := range annotations {
+		failing[a.Key] = true
+	}
+	for _, k := range failingKeys {
+		failing[k] = true
+	}
+	return failing
 }

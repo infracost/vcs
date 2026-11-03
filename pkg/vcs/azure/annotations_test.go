@@ -23,6 +23,7 @@ func TestPostAnnotations(t *testing.T) {
 	threads := []map[string]any{
 		thread(1, "fixed", vcs.AddAnnotationTag("x", tag, "back")),
 		thread(2, "active", vcs.AddAnnotationTag("x", tag, "gone")),
+		thread(5, "active", vcs.AddAnnotationTag("x", tag, "capped")),
 		thread(3, "closed", vcs.AddMarkdownTags("main comment", tag, nil)),
 		threadBy(4, "active", vcs.AddAnnotationTag("x", tag, "new"), "someone-else"),
 	}
@@ -62,7 +63,7 @@ func TestPostAnnotations(t *testing.T) {
 	res, err := a.PostAnnotations(context.Background(), []comment.Annotation{
 		{Key: "back", Path: "main.tf", Line: 1},
 		{Key: "new", Path: "dir/main.tf", Line: 7},
-	})
+	}, []string{"capped"})
 	if err != nil {
 		t.Fatal(err)
 	}

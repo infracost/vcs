@@ -22,9 +22,9 @@ type annotationThread struct {
 }
 
 // PostAnnotations opens one file thread per annotation. A key that already
-// has a thread is not posted again. Threads whose key is gone are set to
-// "fixed".
-func (a *Azure) PostAnnotations(ctx context.Context, annotations []comment.Annotation) (vcs.AnnotationResult, error) {
+// has a thread is not posted again. Threads whose failure is gone are set
+// to "fixed".
+func (a *Azure) PostAnnotations(ctx context.Context, annotations []comment.Annotation, failingKeys []string) (vcs.AnnotationResult, error) {
 	threads, err := a.findAnnotationThreads(ctx)
 	if err != nil {
 		return vcs.AnnotationResult{}, err
@@ -37,11 +37,10 @@ func (a *Azure) PostAnnotations(ctx context.Context, annotations []comment.Annot
 
 	var res vcs.AnnotationResult
 	var lastRejection error
-	wanted := map[string]bool{}
+	failing := vcs.StillFailing(annotations, failingKeys)
 	iteration := 0
 
 	for _, an := range annotations {
-		wanted[an.Key] = true
 		if t, ok := existing[an.Key]; ok {
 			if t.status == "fixed" || t.status == "closed" {
 				if err := a.callSetThreadStatus(ctx, t.id, "active"); err != nil {
@@ -70,7 +69,7 @@ func (a *Azure) PostAnnotations(ctx context.Context, annotations []comment.Annot
 	}
 
 	for _, t := range threads {
-		if wanted[t.key] || t.status == "fixed" || t.status == "closed" {
+		if failing[t.key] || t.status == "fixed" || t.status == "closed" {
 			continue
 		}
 		if err := a.callSetThreadStatus(ctx, t.id, "fixed"); err != nil {
