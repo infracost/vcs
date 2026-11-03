@@ -30,17 +30,24 @@ type Options struct {
 	// Template overrides the default comment template. If nil, the
 	// default template is used.
 	Template *template.Template
+
+	// HeadSHA is the PR head commit that PostAnnotations comments on. Empty
+	// disables annotations.
+	HeadSHA string
 }
 
 // GitHub implements vcs.VCS for GitHub pull requests using the GraphQL API.
 type GitHub struct {
-	client   *githubv4.Client
-	recorder *vcs.StatusRecorder
-	owner    string
-	repo     string
-	prNumber int32
-	tag      string
-	tmpl     *template.Template
+	client     *githubv4.Client
+	restClient *http.Client
+	restURL    string
+	headSHA    string
+	recorder   *vcs.StatusRecorder
+	owner      string
+	repo       string
+	prNumber   int32
+	tag        string
+	tmpl       *template.Template
 
 	// prNodeID is lazily fetched on first use.
 	prNodeID string
@@ -48,7 +55,7 @@ type GitHub struct {
 
 // New creates a new GitHub VCS provider for the given repository and pull request.
 func New(ctx context.Context, owner, repo, token string, prNumber int32, opts Options) (*GitHub, error) {
-	client, recorder, err := newClient(ctx, token, opts.APIURL, opts.TLSConfig)
+	client, restClient, recorder, err := newClient(ctx, token, opts.APIURL, opts.TLSConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -64,13 +71,16 @@ func New(ctx context.Context, owner, repo, token string, prNumber int32, opts Op
 	}
 
 	return &GitHub{
-		client:   client,
-		recorder: recorder,
-		owner:    owner,
-		repo:     repo,
-		prNumber: prNumber,
-		tag:      tag,
-		tmpl:     tmpl,
+		client:     client,
+		restClient: restClient,
+		restURL:    restAPIURL(opts.APIURL),
+		headSHA:    opts.HeadSHA,
+		recorder:   recorder,
+		owner:      owner,
+		repo:       repo,
+		prNumber:   prNumber,
+		tag:        tag,
+		tmpl:       tmpl,
 	}, nil
 }
 
@@ -378,7 +388,7 @@ func (g *GitHub) callHideComment(ctx context.Context, c githubComment) error {
 // newClient creates a GitHub GraphQL client. It returns a StatusRecorder
 // wrapping the client's transport so PostComment can recover the HTTP status
 // code of a failed request, which the GraphQL client otherwise hides.
-func newClient(ctx context.Context, token, apiURL string, tlsConfig *tls.Config) (*githubv4.Client, *vcs.StatusRecorder, error) {
+func newClient(ctx context.Context, token, apiURL string, tlsConfig *tls.Config) (*githubv4.Client, *http.Client, *vcs.StatusRecorder, error) {
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 
 	transport := http.DefaultTransport.(*http.Transport).Clone()
@@ -390,10 +400,17 @@ func newClient(ctx context.Context, token, apiURL string, tlsConfig *tls.Config)
 
 	// Standard GitHub.com
 	if apiURL == "" || apiURL == "https://api.github.com" {
-		return githubv4.NewClient(tc), recorder, nil
+		return githubv4.NewClient(tc), tc, recorder, nil
 	}
 
 	// GitHub Enterprise — append /api/graphql to the base URL.
 	graphqlURL := strings.TrimRight(apiURL, "/") + "/api/graphql"
-	return githubv4.NewEnterpriseClient(graphqlURL, tc), recorder, nil
+	return githubv4.NewEnterpriseClient(graphqlURL, tc), tc, recorder, nil
+}
+
+func restAPIURL(apiURL string) string {
+	if apiURL == "" || apiURL == "https://api.github.com" {
+		return "https://api.github.com"
+	}
+	return strings.TrimRight(apiURL, "/") + "/api/v3"
 }

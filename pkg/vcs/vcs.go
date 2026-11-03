@@ -63,4 +63,9 @@ type VCS interface {
 	// provider's web UI. Returns an empty string when any required
 	// input is missing.
 	SourceLink(repoURL, commitSHA, path string, startLine int) string
+
+	// PostAnnotations pins each annotation to its line in the PR diff, and
+	// marks earlier annotations whose key is not in the list as fixed. Every
+	// annotation must point at a line in the diff.
+	PostAnnotations(ctx context.Context, annotations []comment.Annotation) (AnnotationResult, error)
 }
