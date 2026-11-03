@@ -14,9 +14,13 @@ import (
 
 func TestPostAnnotations(t *testing.T) {
 	const tag = "infracost-comment"
+	note := func(key string, author int) []map[string]any {
+		return []map[string]any{{"body": vcs.AddAnnotationTag("x", tag, key), "resolved": false, "author": map[string]int{"id": author}}}
+	}
 	discussions := []map[string]any{
-		{"id": "keep", "notes": []map[string]any{{"body": vcs.AddAnnotationTag("x", tag, "k1"), "resolved": false}}},
-		{"id": "stale", "notes": []map[string]any{{"body": vcs.AddAnnotationTag("x", tag, "gone"), "resolved": false}}},
+		{"id": "keep", "notes": note("k1", 42)},
+		{"id": "stale", "notes": note("gone", 42)},
+		{"id": "planted", "notes": note("k2", 7)},
 		{"id": "other", "notes": []map[string]any{{"body": "a human comment"}}},
 	}
 
@@ -25,6 +29,8 @@ func TestPostAnnotations(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/api/v4/projects/g/r/merge_requests/3")
 		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v4/user":
+			_ = json.NewEncoder(w).Encode(map[string]int{"id": 42})
 		case r.Method == http.MethodGet && path == "/discussions":
 			_ = json.NewEncoder(w).Encode(discussions)
 		case r.Method == http.MethodGet && path == "":

@@ -14,17 +14,21 @@ import (
 
 func TestPostAnnotations(t *testing.T) {
 	const tag = "infracost-comment"
-	thread := func(id, key string, resolved, outdated bool) map[string]any {
+	threadBy := func(id, key string, resolved, outdated, ours bool) map[string]any {
 		return map[string]any{
 			"id": id, "isResolved": resolved, "isOutdated": outdated,
-			"comments": map[string]any{"nodes": []map[string]any{{"body": vcs.AddAnnotationTag("x", tag, key)}}},
+			"comments": map[string]any{"nodes": []map[string]any{{"body": vcs.AddAnnotationTag("x", tag, key), "viewerDidAuthor": ours}}},
 		}
+	}
+	thread := func(id, key string, resolved, outdated bool) map[string]any {
+		return threadBy(id, key, resolved, outdated, true)
 	}
 	threads := []map[string]any{
 		thread("T_keep", "keep", false, false),
 		thread("T_back", "back", true, false),
 		thread("T_moved", "moved", false, true),
 		thread("T_gone", "gone", false, false),
+		threadBy("T_planted", "new", false, false, false),
 		{"id": "T_human", "isResolved": false, "isOutdated": false,
 			"comments": map[string]any{"nodes": []map[string]any{{"body": "a human review comment"}}}},
 	}
@@ -118,5 +122,33 @@ func TestPostAnnotationsNoHeadSHA(t *testing.T) {
 	res, err := g.PostAnnotations(context.Background(), []comment.Annotation{{Path: "a", Line: 1}})
 	if err != nil || res.Posted != 0 || res.SkipReason == "" {
 		t.Errorf("got %+v, %v", res, err)
+	}
+}
+
+func TestPostAnnotationsAllRejected(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/graphql" {
+			_, _ = w.Write([]byte(`{"data":{"repository":{"pullRequest":{"reviewThreads":{"nodes":[],"pageInfo":{"hasNextPage":false}}}}}}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, _ = w.Write([]byte(`{"message":"Validation Failed","errors":["commit_id is not part of the pull request"]}`))
+	}))
+	defer srv.Close()
+
+	g, err := New(context.Background(), "o", "r", "token", 1, Options{APIURL: srv.URL, HeadSHA: "stale"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := g.PostAnnotations(context.Background(), []comment.Annotation{
+		{Key: "a", Path: "main.tf", Line: 1},
+		{Key: "b", Path: "main.tf", Line: 2},
+	})
+	if err == nil {
+		t.Fatalf("want an error, got %+v", res)
+	}
+	if res.Rejected != 2 || !strings.Contains(err.Error(), "commit_id is not part of the pull request") {
+		t.Errorf("res = %+v, err = %v", res, err)
 	}
 }

@@ -70,7 +70,7 @@ func TestBuildAnnotations(t *testing.T) {
 	if len(got[1].Fixes) != 1 || got[1].Fixes[0] != "Use gp3" || got[1].Description != "GP3 is cheaper." {
 		t.Errorf("annotation 1 = %+v", got[1])
 	}
-	if got[0].Key == got[1].Key || got[1].Key != annotationKey("gp3", "aws_ebs_volume.new") {
+	if got[0].Key == got[1].Key || got[1].Key != annotationKey("gp3", "aws_ebs_volume.new", "main.tf") {
 		t.Errorf("keys = %q, %q", got[0].Key, got[1].Key)
 	}
 }
@@ -126,5 +126,38 @@ func TestAnnotationMarkdownNoSavings(t *testing.T) {
 		":bulb:&nbsp;Add `team`."
 	if md := a.Markdown(); md != want {
 		t.Errorf("Markdown() =\n%s\nwant\n%s", md, want)
+	}
+}
+
+func TestBuildAnnotationsSplitsFilesAcrossProjects(t *testing.T) {
+	r := func(path string, line int64, issue string) *provider.FinopsPolicyFailingResource {
+		return &provider.FinopsPolicyFailingResource{
+			Id: "a", CauseAddress: "aws_instance.a", Path: path, StartLine: line,
+			ProjectNames: []string{path}, Issues: []*provider.FinopsResourceIssue{{Description: issue}},
+		}
+	}
+	got := BuildAnnotations(Data{
+		FinOpsPolicyResults: []*provider.FinopsPolicyResult{{
+			PolicySlug: "p", PolicyName: "P", IncludeInPullRequestComment: true,
+			FailingResources: []*provider.FinopsPolicyFailingResource{r("dev/main.tf", 3, "dev fix"), r("prod/main.tf", 9, "prod fix")},
+		}},
+		TaggingPolicyResults: []event.TaggingPolicyResult{{
+			Name: "T", TagPolicyID: "t", PRComment: true,
+			FailingResources: []event.TagPolicyResultResource{
+				{Address: "aws_s3_bucket.b", Path: "dev/s3.tf", Line: 1, InvalidTags: []event.InvalidTag{{Key: "team", MissingMandatory: true}}},
+				{Address: "aws_s3_bucket.b", Path: "prod/s3.tf", Line: 2, InvalidTags: []event.InvalidTag{{Key: "team", MissingMandatory: true}}},
+			},
+		}},
+	})
+	if len(got) != 4 {
+		t.Fatalf("got %d annotations, want 4: %+v", len(got), got)
+	}
+	for _, a := range got {
+		if len(a.Fixes) != 1 {
+			t.Errorf("%s:%d has fixes %v", a.Path, a.Line, a.Fixes)
+		}
+		if a.Path == "prod/main.tf" && (a.Line != 9 || a.Fixes[0] != "prod fix") {
+			t.Errorf("prod annotation = %+v", a)
+		}
 	}
 }

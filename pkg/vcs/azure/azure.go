@@ -223,7 +223,10 @@ type apiComment struct {
 	Content       string `json:"content"`
 	PublishedDate string `json:"publishedDate"`
 	IsDeleted     bool   `json:"isDeleted"`
-	Links         struct {
+	Author        struct {
+		ID string `json:"id"`
+	} `json:"author"`
+	Links struct {
 		Self struct {
 			Href string `json:"href"`
 		} `json:"self"`

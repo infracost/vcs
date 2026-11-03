@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"path"
+	"strings"
 
 	"github.com/infracost/vcs/pkg/vcs"
 	"github.com/infracost/vcs/pkg/vcs/comment"
@@ -33,6 +36,7 @@ func (a *Azure) PostAnnotations(ctx context.Context, annotations []comment.Annot
 	}
 
 	var res vcs.AnnotationResult
+	var lastRejection error
 	wanted := map[string]bool{}
 	iteration := 0
 
@@ -54,11 +58,15 @@ func (a *Azure) PostAnnotations(ctx context.Context, annotations []comment.Annot
 		if err := a.callCreateFileThread(ctx, iteration, an); err != nil {
 			if vcs.IsRejected(err) {
 				res.Rejected++
+				lastRejection = err
 				continue
 			}
 			return res, err
 		}
 		res.Posted++
+	}
+	if err := vcs.AllRejected(res, lastRejection); err != nil {
+		return res, err
 	}
 
 	for _, t := range threads {
@@ -75,6 +83,11 @@ func (a *Azure) PostAnnotations(ctx context.Context, annotations []comment.Annot
 }
 
 func (a *Azure) findAnnotationThreads(ctx context.Context) ([]annotationThread, error) {
+	userID, err := a.authenticatedUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	var resData struct {
 		Value []struct {
 			ID        int64        `json:"id"`
@@ -90,7 +103,8 @@ func (a *Azure) findAnnotationThreads(ctx context.Context) ([]annotationThread, 
 
 	var threads []annotationThread
 	for _, t := range resData.Value {
-		if t.IsDeleted || len(t.Comments) == 0 {
+		// Only threads we started: anyone can write our tag.
+		if t.IsDeleted || len(t.Comments) == 0 || !strings.EqualFold(t.Comments[0].Author.ID, userID) {
 			continue
 		}
 		key, ok := vcs.ExtractAnnotationKey(t.Comments[0].Content, a.tag)
@@ -100,6 +114,34 @@ func (a *Azure) findAnnotationThreads(ctx context.Context) ([]annotationThread, 
 		threads = append(threads, annotationThread{id: t.ID, key: key, status: t.Status})
 	}
 	return threads, nil
+}
+
+// authenticatedUserID returns the identity the token acts as. connectionData
+// lives on the organization (or collection), one level above the project.
+func (a *Azure) authenticatedUserID(ctx context.Context) (string, error) {
+	u, err := url.Parse(a.repoAPIURL)
+	if err != nil {
+		return "", fmt.Errorf("parsing repo API URL: %w", err)
+	}
+	projectPath, _, ok := strings.Cut(u.Path, "/_apis/")
+	if !ok {
+		return "", fmt.Errorf("unexpected repo API URL %q", a.repoAPIURL)
+	}
+	u.Path = path.Dir(projectPath) + "/_apis/connectionData"
+	u.Path = strings.Replace(u.Path, "//", "/", 1)
+
+	var resData struct {
+		AuthenticatedUser struct {
+			ID string `json:"id"`
+		} `json:"authenticatedUser"`
+	}
+	if err := a.doJSON(ctx, http.MethodGet, u.String(), nil, &resData, vcs.OpList, "getting current user"); err != nil {
+		return "", err
+	}
+	if resData.AuthenticatedUser.ID == "" {
+		return "", fmt.Errorf("getting current user: no id in connectionData")
+	}
+	return resData.AuthenticatedUser.ID, nil
 }
 
 func (a *Azure) latestIteration(ctx context.Context) (int, error) {

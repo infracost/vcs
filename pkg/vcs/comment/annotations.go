@@ -114,7 +114,7 @@ func finopsAnnotations(data Data, policyType string, results, previous []*provid
 			if address == "" {
 				address = resource.Id
 			}
-			key := annotationKey(result.PolicySlug, address)
+			key := annotationKey(result.PolicySlug, address, resource.Path)
 
 			i, ok := seen[key]
 			if !ok {
@@ -166,7 +166,7 @@ func taggingAnnotations(data Data) []Annotation {
 			if prevFailing[resource.Address] || !annotatable(resource.Path, resource.Line) {
 				continue
 			}
-			key := annotationKey(result.TagPolicyID, resource.Address)
+			key := annotationKey(result.TagPolicyID, resource.Address, resource.Path)
 			fixes := data.formatTagIssues(nil, resource)
 
 			if i, ok := seen[key]; ok {
@@ -201,8 +201,11 @@ func annotatable(path string, line int) bool {
 		!strings.HasPrefix(path, "/tmp")
 }
 
-// annotationKey is a short hash, safe to embed in a markdown tag.
-func annotationKey(policyID, address string) string {
-	sum := sha256.Sum256([]byte(policyID + "\x00" + address))
+// annotationKey is a short hash, safe to embed in a markdown tag. The path is
+// part of it: one address can be defined in a different file per project, and
+// each file needs its own annotation. The line is not, so a thread survives
+// edits above it.
+func annotationKey(policyID, address, path string) string {
+	sum := sha256.Sum256([]byte(policyID + "\x00" + address + "\x00" + path))
 	return hex.EncodeToString(sum[:8])
 }

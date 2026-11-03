@@ -3,8 +3,10 @@ package github
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"text/template"
 	"time"
@@ -397,6 +399,17 @@ func newClient(ctx context.Context, token, apiURL string, tlsConfig *tls.Config)
 	httpClient := &http.Client{Transport: recorder}
 	httpCtx := context.WithValue(ctx, oauth2.HTTPClient, httpClient)
 	tc := oauth2.NewClient(httpCtx, ts)
+	// The oauth2 transport adds the token on every hop, so a redirect to
+	// another host would leak it. See the same guard in the azure package.
+	tc.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if req.URL.Host != via[0].URL.Host {
+			return http.ErrUseLastResponse
+		}
+		if len(via) >= 10 {
+			return errors.New("stopped after 10 redirects")
+		}
+		return nil
+	}
 
 	// Standard GitHub.com
 	if apiURL == "" || apiURL == "https://api.github.com" {
@@ -408,9 +421,19 @@ func newClient(ctx context.Context, token, apiURL string, tlsConfig *tls.Config)
 	return githubv4.NewEnterpriseClient(graphqlURL, tc), tc, recorder, nil
 }
 
+// restAPIURL is the REST base for apiURL. GHE.com serves REST at the root of
+// api.SUBDOMAIN.ghe.com; GitHub Enterprise Server serves it under /api/v3.
 func restAPIURL(apiURL string) string {
 	if apiURL == "" || apiURL == "https://api.github.com" {
 		return "https://api.github.com"
 	}
-	return strings.TrimRight(apiURL, "/") + "/api/v3"
+	apiURL = strings.TrimRight(apiURL, "/")
+	if u, err := url.Parse(apiURL); err == nil && strings.HasSuffix(u.Hostname(), ".ghe.com") {
+		if !strings.HasPrefix(u.Host, "api.") {
+			u.Host = "api." + u.Host
+		}
+		u.Path = ""
+		return u.String()
+	}
+	return apiURL + "/api/v3"
 }

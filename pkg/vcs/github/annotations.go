@@ -5,12 +5,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/infracost/vcs/pkg/vcs"
 	"github.com/infracost/vcs/pkg/vcs/comment"
 	"github.com/shurcooL/githubv4"
 )
+
+// maxErrBodySize caps how much of an error response is quoted.
+const maxErrBodySize = 1024
 
 type annotationThread struct {
 	id       string
@@ -41,6 +45,7 @@ func (g *GitHub) PostAnnotations(ctx context.Context, annotations []comment.Anno
 	}
 
 	var res vcs.AnnotationResult
+	var lastRejection error
 	wanted := map[string]bool{}
 
 	for _, a := range annotations {
@@ -56,11 +61,15 @@ func (g *GitHub) PostAnnotations(ctx context.Context, annotations []comment.Anno
 		if err := g.callCreateReviewComment(ctx, a); err != nil {
 			if vcs.IsRejected(err) {
 				res.Rejected++
+				lastRejection = err
 				continue
 			}
 			return res, err
 		}
 		res.Posted++
+	}
+	if err := vcs.AllRejected(res, lastRejection); err != nil {
+		return res, err
 	}
 
 	for _, t := range threads {
@@ -92,7 +101,8 @@ func (g *GitHub) findAnnotationThreads(ctx context.Context) ([]annotationThread,
 						IsOutdated githubv4.Boolean
 						Comments   struct {
 							Nodes []struct {
-								Body githubv4.String
+								Body            githubv4.String
+								ViewerDidAuthor githubv4.Boolean
 							}
 						} `graphql:"comments(first: 1)"`
 					}
@@ -117,7 +127,8 @@ func (g *GitHub) findAnnotationThreads(ctx context.Context) ([]annotationThread,
 			return nil, g.recorder.WrapError(err)
 		}
 		for _, node := range q.Repository.PullRequest.ReviewThreads.Nodes {
-			if len(node.Comments.Nodes) == 0 {
+			// Only threads we started: anyone can write our tag.
+			if len(node.Comments.Nodes) == 0 || !node.Comments.Nodes[0].ViewerDidAuthor {
 				continue
 			}
 			key, ok := vcs.ExtractAnnotationKey(string(node.Comments.Nodes[0].Body), g.tag)
@@ -166,7 +177,13 @@ func (g *GitHub) callCreateReviewComment(ctx context.Context, a comment.Annotati
 	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode != http.StatusCreated {
-		return vcs.HTTPPostError(res.StatusCode, res.Header, fmt.Errorf("creating review comment: %s", res.Status))
+		msg := res.Status
+		// GitHub names the cause in the body: line not in the diff, unknown
+		// commit, body too long.
+		if body, err := io.ReadAll(io.LimitReader(res.Body, maxErrBodySize)); err == nil && len(body) > 0 {
+			msg = fmt.Sprintf("%s\n%s", res.Status, body)
+		}
+		return vcs.HTTPPostError(res.StatusCode, res.Header, fmt.Errorf("creating review comment: %s", msg))
 	}
 	return nil
 }

@@ -14,13 +14,17 @@ import (
 
 func TestPostAnnotations(t *testing.T) {
 	const tag = "infracost-comment"
+	threadBy := func(id int, status, body, author string) map[string]any {
+		return map[string]any{"id": id, "status": status, "comments": []map[string]any{{"content": body, "author": map[string]string{"id": author}}}}
+	}
 	thread := func(id int, status, body string) map[string]any {
-		return map[string]any{"id": id, "status": status, "comments": []map[string]any{{"content": body}}}
+		return threadBy(id, status, body, "BOT-ID")
 	}
 	threads := []map[string]any{
 		thread(1, "fixed", vcs.AddAnnotationTag("x", tag, "back")),
 		thread(2, "active", vcs.AddAnnotationTag("x", tag, "gone")),
 		thread(3, "closed", vcs.AddMarkdownTags("main comment", tag, nil)),
+		threadBy(4, "active", vcs.AddAnnotationTag("x", tag, "new"), "someone-else"),
 	}
 
 	var created []map[string]any
@@ -28,6 +32,8 @@ func TestPostAnnotations(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/org/project/_apis/git/repositories/repo/pullRequests/1")
 		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/org/_apis/connectionData":
+			writeJSON(t, w, http.StatusOK, map[string]any{"authenticatedUser": map[string]string{"id": "bot-id"}})
 		case r.Method == http.MethodGet && path == "/threads":
 			writeJSON(t, w, http.StatusOK, map[string]any{"value": threads})
 		case r.Method == http.MethodGet && path == "/iterations":

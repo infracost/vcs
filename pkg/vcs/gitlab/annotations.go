@@ -40,6 +40,7 @@ func (g *GitLab) PostAnnotations(ctx context.Context, annotations []comment.Anno
 	}
 
 	var res vcs.AnnotationResult
+	var lastRejection error
 	wanted := map[string]bool{}
 	var refs *diffRefs
 
@@ -61,11 +62,15 @@ func (g *GitLab) PostAnnotations(ctx context.Context, annotations []comment.Anno
 		if err := g.callCreateDiscussion(ctx, *refs, a); err != nil {
 			if vcs.IsRejected(err) {
 				res.Rejected++
+				lastRejection = err
 				continue
 			}
 			return res, err
 		}
 		res.Posted++
+	}
+	if err := vcs.AllRejected(res, lastRejection); err != nil {
+		return res, err
 	}
 
 	for _, t := range threads {
@@ -96,6 +101,13 @@ func (g *GitLab) getDiffRefs(ctx context.Context) (*diffRefs, error) {
 }
 
 func (g *GitLab) findAnnotationThreads(ctx context.Context) ([]annotationThread, error) {
+	var user struct {
+		ID int `json:"id"`
+	}
+	if _, err := g.doJSON(ctx, http.MethodGet, g.serverURL+"/api/v4/user", nil, &user, vcs.OpList, "getting current user"); err != nil {
+		return nil, err
+	}
+
 	var threads []annotationThread
 	page := "1"
 	for page != "" {
@@ -104,6 +116,9 @@ func (g *GitLab) findAnnotationThreads(ctx context.Context) ([]annotationThread,
 			Notes []struct {
 				Body     string `json:"body"`
 				Resolved bool   `json:"resolved"`
+				Author   struct {
+					ID int `json:"id"`
+				} `json:"author"`
 			} `json:"notes"`
 		}
 		apiURL := fmt.Sprintf("%s/discussions?per_page=100&page=%s", g.mrAPIURL(), page)
@@ -112,7 +127,8 @@ func (g *GitLab) findAnnotationThreads(ctx context.Context) ([]annotationThread,
 			return nil, err
 		}
 		for _, d := range discussions {
-			if len(d.Notes) == 0 {
+			// Only threads we started: anyone can write our tag.
+			if len(d.Notes) == 0 || d.Notes[0].Author.ID != user.ID {
 				continue
 			}
 			key, ok := vcs.ExtractAnnotationKey(d.Notes[0].Body, g.tag)
