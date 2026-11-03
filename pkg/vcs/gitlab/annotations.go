@@ -27,8 +27,8 @@ type annotationThread struct {
 }
 
 // PostAnnotations opens one diff discussion per annotation. A key that already
-// has a thread is not posted again. Threads whose key is gone are resolved.
-func (g *GitLab) PostAnnotations(ctx context.Context, annotations []comment.Annotation) (vcs.AnnotationResult, error) {
+// has a thread is not posted again. Threads whose failure is gone are resolved.
+func (g *GitLab) PostAnnotations(ctx context.Context, annotations []comment.Annotation, failingKeys []string) (vcs.AnnotationResult, error) {
 	threads, err := g.findAnnotationThreads(ctx)
 	if err != nil {
 		return vcs.AnnotationResult{}, err
@@ -41,11 +41,10 @@ func (g *GitLab) PostAnnotations(ctx context.Context, annotations []comment.Anno
 
 	var res vcs.AnnotationResult
 	var lastRejection error
-	wanted := map[string]bool{}
+	failing := vcs.StillFailing(annotations, failingKeys)
 	var refs *diffRefs
 
 	for _, a := range annotations {
-		wanted[a.Key] = true
 		if t, ok := existing[a.Key]; ok {
 			if t.resolved {
 				if err := g.callResolveDiscussion(ctx, t.id, false); err != nil {
@@ -74,7 +73,7 @@ func (g *GitLab) PostAnnotations(ctx context.Context, annotations []comment.Anno
 	}
 
 	for _, t := range threads {
-		if wanted[t.key] || t.resolved {
+		if failing[t.key] || t.resolved {
 			continue
 		}
 		if err := g.callResolveDiscussion(ctx, t.id, true); err != nil {

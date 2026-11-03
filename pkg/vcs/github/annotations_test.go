@@ -28,6 +28,8 @@ func TestPostAnnotations(t *testing.T) {
 		thread("T_back", "back", true, false),
 		thread("T_moved", "moved", false, true),
 		thread("T_gone", "gone", false, false),
+		thread("T_capped", "capped", false, false),
+		thread("T_capped_moved", "capped-moved", false, true),
 		threadBy("T_planted", "new", false, false, false),
 		{"id": "T_human", "isResolved": false, "isOutdated": false,
 			"comments": map[string]any{"nodes": []map[string]any{{"body": "a human review comment"}}}},
@@ -83,7 +85,7 @@ func TestPostAnnotations(t *testing.T) {
 		{Key: "moved", Path: "main.tf", Line: 3, PolicyType: "FinOps", PolicyName: "P"},
 		{Key: "new", Path: "dir/a.tf", Line: 7, PolicyType: "Tagging", PolicyName: "Team tag", Blocking: true},
 		{Key: "bad", Path: "main.tf", Line: 99},
-	})
+	}, []string{"capped", "capped-moved"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +121,7 @@ func TestPostAnnotations(t *testing.T) {
 
 func TestPostAnnotationsNoHeadSHA(t *testing.T) {
 	g := &GitHub{}
-	res, err := g.PostAnnotations(context.Background(), []comment.Annotation{{Path: "a", Line: 1}})
+	res, err := g.PostAnnotations(context.Background(), []comment.Annotation{{Path: "a", Line: 1}}, nil)
 	if err != nil || res.Posted != 0 || res.SkipReason == "" {
 		t.Errorf("got %+v, %v", res, err)
 	}
@@ -144,7 +146,7 @@ func TestPostAnnotationsAllRejected(t *testing.T) {
 	res, err := g.PostAnnotations(context.Background(), []comment.Annotation{
 		{Key: "a", Path: "main.tf", Line: 1},
 		{Key: "b", Path: "main.tf", Line: 2},
-	})
+	}, nil)
 	if err == nil {
 		t.Fatalf("want an error, got %+v", res)
 	}

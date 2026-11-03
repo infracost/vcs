@@ -20,6 +20,7 @@ func TestPostAnnotations(t *testing.T) {
 	discussions := []map[string]any{
 		{"id": "keep", "notes": note("k1", 42)},
 		{"id": "stale", "notes": note("gone", 42)},
+		{"id": "capped", "notes": note("capped", 42)},
 		{"id": "planted", "notes": note("k2", 7)},
 		{"id": "other", "notes": []map[string]any{{"body": "a human comment"}}},
 	}
@@ -58,7 +59,7 @@ func TestPostAnnotations(t *testing.T) {
 	res, err := g.PostAnnotations(context.Background(), []comment.Annotation{
 		{Key: "k1", Path: "main.tf", Line: 1},
 		{Key: "k2", Path: "main.tf", Line: 9, PolicyType: "FinOps", PolicyName: "Use GP3", Address: "aws_ebs_volume.a"},
-	})
+	}, []string{"capped"})
 	if err != nil {
 		t.Fatal(err)
 	}
