@@ -13,8 +13,9 @@ func preexistingSentence(d Data) string {
 	inputs := new(Inputs)
 	finopsIndex := buildPolicyFailureIndex(d.FinOpsPolicyResults, d.PreviousFinOpsPolicyResults)
 	securityIndex := buildPolicyFailureIndex(d.SecurityPolicyResults, d.PreviousSecurityPolicyResults)
+	aiIndex := buildPolicyFailureIndex(d.AIPolicyResults, d.PreviousAIPolicyResults)
 	taggingIndex := buildTaggingFailureIndex(d.TaggingPolicyResults, d.PreviousTaggingPolicyResults)
-	d.processPreexistingIssues(inputs, finopsIndex, securityIndex, taggingIndex)
+	d.processPreexistingIssues(inputs, finopsIndex, securityIndex, aiIndex, taggingIndex)
 	return inputs.PreexistingIssuesSentence
 }
 
@@ -45,6 +46,18 @@ func TestPreexisting_IncludesSecurity(t *testing.T) {
 
 	if got := preexistingSentence(d); !strings.Contains(got, "2 pre-existing issues") {
 		t.Errorf("expected 2 pre-existing issues (security included), got %q", got)
+	}
+}
+
+func TestPreexisting_IncludesAI(t *testing.T) {
+	d := baseData()
+	// AI policies are stored alongside FinOps policies too, and counted the same way.
+	d.PreviousAIPolicyResults = []*provider.FinopsPolicyResult{finopsResult("ai", "c1", "c2")}
+	d.AIPolicyResults = []*provider.FinopsPolicyResult{finopsResult("ai", "c2")}
+
+	// c1 is resolved by this PR, so 1 of the 2 remains.
+	if got := preexistingSentence(d); !strings.Contains(got, "one pre-existing issue") {
+		t.Errorf("expected 1 pre-existing issue (AI included, resolved subtracted), got %q", got)
 	}
 }
 

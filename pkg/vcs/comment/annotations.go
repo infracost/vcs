@@ -17,7 +17,7 @@ type Annotation struct {
 	Path string
 	Line int
 
-	// PolicyType is "FinOps", "Security" or "Tagging".
+	// PolicyType is "FinOps", "Security", "AI" or "Tagging".
 	PolicyType string
 	PolicyName string
 	// Address is the failing resource.
@@ -75,11 +75,13 @@ func (a Annotation) Markdown() string {
 func BuildAnnotations(data Data) []Annotation {
 	finops := finopsAnnotations(data, "FinOps", data.FinOpsPolicyResults, data.PreviousFinOpsPolicyResults)
 	security := finopsAnnotations(data, "Security", data.SecurityPolicyResults, data.PreviousSecurityPolicyResults)
+	ai := finopsAnnotations(data, "AI", data.AIPolicyResults, data.PreviousAIPolicyResults)
 	tagging := taggingAnnotations(data)
 
-	out := make([]Annotation, 0, len(finops)+len(security)+len(tagging))
+	out := make([]Annotation, 0, len(finops)+len(security)+len(ai)+len(tagging))
 	out = append(out, finops...)
 	out = append(out, security...)
+	out = append(out, ai...)
 	out = append(out, tagging...)
 
 	sort.SliceStable(out, func(i, j int) bool {

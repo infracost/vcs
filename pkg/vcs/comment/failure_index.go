@@ -6,7 +6,7 @@ import (
 )
 
 // policyFailureIndex holds pre-computed sets of failing resource IDs for both
-// current and previous FinOps/security policy results, keyed by policy slug.
+// current and previous FinOps, security or AI policy results, keyed by policy slug.
 // Built once and shared between governance and fixed issues processing.
 type policyFailureIndex struct {
 	// current maps policySlug -> set of currently failing resource IDs.

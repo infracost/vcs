@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"text/template"
@@ -190,6 +191,40 @@ func renderCases() []renderTestCase {
 				},
 			},
 			goldenFile: "governance_finops.md",
+		},
+		{
+			// AI policy results get their own table, after cloud security.
+			name:           "governance_ai",
+			maxCommentSize: 65000,
+			data: Data{
+				SupportsBotCommands: true,
+				Currency:            "USD",
+				TotalMonthlyCost:    rat.New(100),
+				RepoURL:             "https://github.com/my-org/my-repo",
+				CommitSHA:           "def456",
+				AIPolicyResults: []*provider.FinopsPolicyResult{
+					{
+						PolicyName:                  "Deprecated models",
+						PolicySlug:                  "ai-deprecated-models",
+						PolicyMessage:               "Flags LLM calls to a model that's deprecated or retired.",
+						BlockPullRequest:            true,
+						IncludeInPullRequestComment: true,
+						FailingResources: []*provider.FinopsPolicyFailingResource{
+							{
+								Id:           "app/chat.py:12",
+								CauseAddress: "app/chat.py:12",
+								Path:         "app/chat.py",
+								StartLine:    12,
+								ProjectNames: []string{"app"},
+								Issues: []*provider.FinopsResourceIssue{
+									{Description: "`gpt-4-0613` is retired. Use `gpt-4.1` instead."},
+								},
+							},
+						},
+					},
+				},
+			},
+			goldenFile: "governance_ai.md",
 		},
 		{
 			// Same resource address failing the same policy with two distinct
@@ -1623,7 +1658,7 @@ func TestProcessFixedIssuesTruncation(t *testing.T) {
 	emptyTagging := buildTaggingFailureIndex(nil, nil)
 
 	inputs := new(Inputs)
-	data.processFixedIssues(inputs, finopsIndex, emptyPolicy, emptyTagging)
+	data.processFixedIssues(inputs, finopsIndex, emptyPolicy, emptyPolicy, emptyTagging)
 
 	if len(inputs.FixedIssueCounts) != FixedIssueLimit {
 		t.Errorf("FixedIssueCounts len = %d, want %d", len(inputs.FixedIssueCounts), FixedIssueLimit)
@@ -1634,6 +1669,30 @@ func TestProcessFixedIssuesTruncation(t *testing.T) {
 	// Top entry should be the policy with the most fixes (7).
 	if inputs.FixedIssueCounts[0].FixedIssues != 7 {
 		t.Errorf("top FixedIssues = %d, want 7", inputs.FixedIssueCounts[0].FixedIssues)
+	}
+}
+
+func TestProcessFixedIssuesCountsAI(t *testing.T) {
+	// A call that failed an AI policy on the base branch and passes now is fixed.
+	data := Data{
+		PreviousAIPolicyResults: []*provider.FinopsPolicyResult{{
+			PolicyName: "Deprecated models", PolicySlug: "ai-deprecated-models", IncludeInPullRequestComment: true,
+			FailingResources: []*provider.FinopsPolicyFailingResource{{Id: "call.a"}},
+		}},
+		AIPolicyResults: []*provider.FinopsPolicyResult{{
+			PolicyName: "Deprecated models", PolicySlug: "ai-deprecated-models", IncludeInPullRequestComment: true,
+			PassingResourceIds: []string{"call.a"},
+		}},
+	}
+	empty := buildPolicyFailureIndex(nil, nil)
+	aiIndex := buildPolicyFailureIndex(data.AIPolicyResults, data.PreviousAIPolicyResults)
+
+	inputs := new(Inputs)
+	data.processFixedIssues(inputs, empty, empty, aiIndex, buildTaggingFailureIndex(nil, nil))
+
+	want := []FixedIssueCount{{PolicyName: "Deprecated models", FixedIssues: 1}}
+	if !reflect.DeepEqual(inputs.FixedIssueCounts, want) {
+		t.Errorf("FixedIssueCounts = %+v, want %+v", inputs.FixedIssueCounts, want)
 	}
 }
 

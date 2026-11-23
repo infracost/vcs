@@ -4,7 +4,7 @@ import "github.com/infracost/proto/gen/go/infracost/provider"
 
 // buildDeletedResources returns the set of resource IDs/addresses that were
 // failing in the previous run but no longer appear in any current policy
-// result (passing or failing) across finops, security, and tagging policies.
+// result (passing or failing) across finops, security, AI and tagging policies.
 //
 // Such a resource was either deleted, or stopped being applicable to every
 // policy that previously covered it. In either case it shouldn't be counted
@@ -18,6 +18,7 @@ func (data *Data) buildDeletedResources() map[string]bool {
 	current := make(map[string]bool)
 	addFinopsCurrent(current, data.FinOpsPolicyResults)
 	addFinopsCurrent(current, data.SecurityPolicyResults)
+	addFinopsCurrent(current, data.AIPolicyResults)
 	for _, r := range data.TaggingPolicyResults {
 		for _, fr := range r.FailingResources {
 			current[fr.Address] = true
@@ -30,6 +31,7 @@ func (data *Data) buildDeletedResources() map[string]bool {
 	deleted := make(map[string]bool)
 	addFinopsDeleted(deleted, current, data.PreviousFinOpsPolicyResults)
 	addFinopsDeleted(deleted, current, data.PreviousSecurityPolicyResults)
+	addFinopsDeleted(deleted, current, data.PreviousAIPolicyResults)
 	for _, r := range data.PreviousTaggingPolicyResults {
 		for _, fr := range r.FailingResources {
 			if !current[fr.Address] {

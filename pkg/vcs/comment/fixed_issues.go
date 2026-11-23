@@ -16,13 +16,14 @@ const FixedIssueLimit = 5
 // processFixedIssues computes per-policy fixed issue counts by comparing
 // current vs previous policy results, and formats the summary sentence.
 // See: dashboard/api/src/services/templates/partials/fixedIssuesSummary.ts
-func (data *Data) processFixedIssues(inputs *Inputs, finopsIndex, securityIndex policyFailureIndex, taggingIndex taggingFailureIndex) {
-	counts := make([]FixedIssueCount, 0, len(data.PreviousFinOpsPolicyResults)+len(data.PreviousSecurityPolicyResults)+len(data.TaggingPolicyResults))
+func (data *Data) processFixedIssues(inputs *Inputs, finopsIndex, securityIndex, aiIndex policyFailureIndex, taggingIndex taggingFailureIndex) {
+	counts := make([]FixedIssueCount, 0, len(data.PreviousFinOpsPolicyResults)+len(data.PreviousSecurityPolicyResults)+len(data.PreviousAIPolicyResults)+len(data.TaggingPolicyResults))
 
 	deleted := data.buildDeletedResources()
 
 	counts = append(counts, finopsFixedIssueCounts(data.PreviousFinOpsPolicyResults, finopsIndex, deleted)...)
 	counts = append(counts, finopsFixedIssueCounts(data.PreviousSecurityPolicyResults, securityIndex, deleted)...)
+	counts = append(counts, finopsFixedIssueCounts(data.PreviousAIPolicyResults, aiIndex, deleted)...)
 	counts = append(counts, taggingFixedIssueCounts(data.TaggingPolicyResults, taggingIndex, deleted)...)
 
 	// Sort by count descending, then policy name ascending.

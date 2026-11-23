@@ -103,6 +103,11 @@ type Data struct {
 	SecurityPolicyResults         []*provider.FinopsPolicyResult
 	PreviousSecurityPolicyResults []*provider.FinopsPolicyResult
 
+	// AIPolicyResults and PreviousAIPolicyResults are the AI policy results, split
+	// out the same way.
+	AIPolicyResults         []*provider.FinopsPolicyResult
+	PreviousAIPolicyResults []*provider.FinopsPolicyResult
+
 	// TaggingPolicyResults contains the aggregated tagging evaluation results across
 	// all projects.
 	TaggingPolicyResults         []event.TaggingPolicyResult
