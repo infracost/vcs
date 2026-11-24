@@ -75,6 +75,37 @@ func TestBuildAnnotations(t *testing.T) {
 	}
 }
 
+func TestBuildAnnotationsAI(t *testing.T) {
+	failing := func(id string, line int64) *provider.FinopsPolicyFailingResource {
+		return &provider.FinopsPolicyFailingResource{
+			Id: id, CauseAddress: id, Path: "app/chat.py", StartLine: line,
+			Issues: []*provider.FinopsResourceIssue{{Description: "`gpt-4-0613` is retired."}},
+		}
+	}
+	data := Data{
+		AIPolicyResults: []*provider.FinopsPolicyResult{{
+			PolicySlug: "ai-deprecated-models", PolicyName: "Deprecated models",
+			IncludeInPullRequestComment: true, BlockPullRequest: true,
+			FailingResources: []*provider.FinopsPolicyFailingResource{failing("call.new", 12), failing("call.old", 30)},
+		}},
+		PreviousAIPolicyResults: []*provider.FinopsPolicyResult{{
+			PolicySlug:       "ai-deprecated-models",
+			FailingResources: []*provider.FinopsPolicyFailingResource{failing("call.old", 30)},
+		}},
+	}
+
+	got := BuildAnnotations(data)
+	if len(got) != 1 {
+		t.Fatalf("got %d annotations, want 1 (call.old was already failing): %+v", len(got), got)
+	}
+	if got[0].PolicyType != "AI" || got[0].Line != 12 {
+		t.Errorf("got %+v, want an AI annotation on line 12", got[0])
+	}
+	if want := "❌ AI issue found (blocking)"; got[0].Heading() != want {
+		t.Errorf("Heading() = %q, want %q", got[0].Heading(), want)
+	}
+}
+
 func TestBuildAnnotationsMergesProjects(t *testing.T) {
 	r := func(issue string) *provider.FinopsPolicyFailingResource {
 		return &provider.FinopsPolicyFailingResource{

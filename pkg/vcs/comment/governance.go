@@ -19,9 +19,10 @@ const (
 	GovernanceResourceLimit = 5
 )
 
-func (data *Data) processGovernance(inputs *Inputs, srcLink SourceLinker, finopsIndex, securityIndex policyFailureIndex, taggingIndex taggingFailureIndex) bool {
+func (data *Data) processGovernance(inputs *Inputs, srcLink SourceLinker, finopsIndex, securityIndex, aiIndex policyFailureIndex, taggingIndex taggingFailureIndex) bool {
 	data.processPolicyResults(inputs, "FinOps policies", data.FinOpsPolicyResults, finopsIndex, srcLink)
 	data.processPolicyResults(inputs, "Cloud security policies", data.SecurityPolicyResults, securityIndex, srcLink)
+	data.processPolicyResults(inputs, "AI policies", data.AIPolicyResults, aiIndex, srcLink)
 	data.processTaggingPolicyResults(inputs, taggingIndex, srcLink)
 	data.processGuardrailResults(inputs)
 
@@ -47,7 +48,7 @@ func (data *Data) processGovernance(inputs *Inputs, srcLink SourceLinker, finops
 	return hasGuardrail
 }
 
-// processPolicyResults handles both FinOps and cloud security policy results.
+// processPolicyResults handles FinOps, cloud security and AI policy results.
 // They share the same proto type, just with different table titles.
 func (data *Data) processPolicyResults(inputs *Inputs, title string, results []*provider.FinopsPolicyResult, index policyFailureIndex, srcLink SourceLinker) {
 	if len(results) == 0 {
